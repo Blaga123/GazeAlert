@@ -24,7 +24,12 @@ import numpy as np
 from one_euro_filter import OneEuroFilter, OneEuroFilter2D
 
 TASK_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "face_landmarker.task")
+
+def _get_res_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+MODEL_PATH = _get_res_path("face_landmarker.task")
 
 
 @dataclass

@@ -7,6 +7,7 @@ Plays audio asynchronously with 0 ms latency using Windows sound engine.
 import math
 import os
 import struct
+import sys
 import wave
 from typing import Optional
 
@@ -15,7 +16,11 @@ try:
 except ImportError:
     winsound = None
 
-SOUNDS_DIR = os.path.join(os.path.dirname(__file__), "sounds")
+def _get_res_path(relative_path: str) -> str:
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
+
+SOUNDS_DIR = _get_res_path("sounds")
 
 
 def _generate_harmonic_wav(filepath: str, frequencies: list, duration_sec: float = 0.4, sample_rate: int = 44100):
