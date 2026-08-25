@@ -5,6 +5,7 @@
   "fps_target": 30,
   "use_mjpg_codec": true,
   "buffer_size": 1,
+  "auto_open_dashboard": true,
   "away_threshold_seconds": 5.0,
   "warning_threshold_seconds": 2.5,
   "head_yaw_threshold": 18.0,

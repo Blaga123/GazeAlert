@@ -441,6 +441,9 @@ def main():
     )
     tray_manager.start()
 
+    if config.get("auto_open_dashboard", True):
+        control_center.show(pill_widget.root if pill_widget.root else None)
+
     away_start_time = None
     away_elapsed = 0.0
     fps_counter = 0

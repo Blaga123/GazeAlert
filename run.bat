@@ -1,7 +1,12 @@
 @echo off
 chcp 65001 > nul
-title GazeAlert AI Suite
+title GazeAlert Studio • AI Eye Tracking Suite
 cls
+
+echo ============================================================
+echo   🚀 GazeAlert Studio - Pornire aplicatie...
+echo ============================================================
+echo.
 
 cd /d "%~dp0"
 
