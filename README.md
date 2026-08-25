@@ -26,10 +26,11 @@
 * **Ritm de Lectură & Saccade**: Diferențiere automată între lectură normală, fixație stabilă și oboseală oculară (PERCLOS).
 * **Filtru 1-Euro 1D & 2D**: Elimină tremurul camerei fără a introduce latență sau lag perceptibil.
 
-### 👑 2. Moduri de Interfață & Floating Pill Widget
-* **🖥️ Mod Studio HUD (1000x560)**: Randare completă a măștii faciale 478-Landmark FaceID, raze laser fluorescente 3D din pupile și panouri HUD translucide (*Glassmorphism*).
-* **🔲 Mini-Widget OpenCV (Always-on-Top)**: Panou compact (420x110) cu orb de status pulsatil și bară de progres Pomodoro.
-* **🪟 Desktop Floating Pill Widget (Frameless)**: Widget plutitor fără margini, transparent (92% opacity), cu suport **Drag-and-Drop** oriunde pe ecran.
+### 👑 2. Interfață Studio All-in-One & Moduri Vizuale
+* **🖥️ All-in-One Unified Studio Window**: O singură fereastră modernă (1280x750) combinând stream-ul HD al camerei în stânga și Panoul de Control Studio cu telemetrie completă în dreapta.
+* **🛡️ Monk Mode (Scut Distrageri)**: Vignetare și alertă vizuală pe tot ecranul la distragerea atenției.
+* **📊 Harta Termică a Privirii (2D Heatmap)**: Render radial termic în HTML5 Canvas pe ecran în `study_report.html`.
+* **🔲 Mini-Widget OpenCV & Floating Pill Widget**: Widget plutitor fără margini, transparent (92% opacity), cu suport **Drag-and-Drop** oriunde pe ecran.
 * **🛡️ Minimize to System Tray (Lângă Ceas)**: Ascundere completă în bara de activități cu meniu de click-dreapta (`pystray`) și funcționare silențioasă în fundal.
 
 ### 🧠 3. Coach de Studiu Pomodoro & Statistici
