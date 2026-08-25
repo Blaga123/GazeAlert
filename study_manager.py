@@ -134,11 +134,19 @@ class StudyManager:
         self.is_eye_rest_alert = False
         self.eye_rest_countdown = 20.0
 
-        # Session Metrics
+        # Session Metrics & 2D Gaze Heatmap
         self.stats = StudyStats()
         self._last_tick = time.time()
         self._was_phone = False
         self._was_away = False
+        self.gaze_heatmap_points: List[List[float]] = []
+
+    def add_gaze_point(self, sx: float, sy: float):
+        """Accumulate normalized screen gaze fixation point (0.0 to 1.0) for Heatmap."""
+        if 0.0 <= sx <= 1.0 and 0.0 <= sy <= 1.0:
+            if len(self.gaze_heatmap_points) > 1800:
+                self.gaze_heatmap_points.pop(0)
+            self.gaze_heatmap_points.append([round(sx, 3), round(sy, 3)])
 
     @property
     def is_break_time(self) -> bool:
@@ -320,11 +328,15 @@ class StudyManager:
             grade = "C (Multe Distrageri)"
             grade_col = "#FF3250"
 
+        # Heatmap point serialization
+        heatmap_json = json.dumps(self.gaze_heatmap_points)
+        heatmap_count = len(self.gaze_heatmap_points)
+
         html = f"""<!DOCTYPE html>
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>GazeAlert - Raport Sesiune de Studiu</title>
+    <title>GazeAlert - Raport Sesiune de Studiu & Heatmap</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
@@ -343,7 +355,7 @@ class StudyManager:
             backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
-            max-width: 820px;
+            max-width: 860px;
             width: 100%;
             padding: 35px;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
@@ -447,8 +459,20 @@ class StudyManager:
             </div>
         </div>
 
+        <!-- 2D Screen Gaze Heatmap Section -->
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 18px; margin: 20px 0; text-align: center;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3 style="font-size:14px; color:#38bdf8; margin:0; display:flex; align-items:center; gap:6px;">🗺️ Harta Termica a Privirii pe Ecran (Gaze Heatmap)</h3>
+                <span style="font-size:12px; color:#94a3b8;">{heatmap_count} puncte de fixatie inregistrate</span>
+            </div>
+            <div style="position:relative; width:100%; height:240px; background:#070a0e; border:1px solid #1e293b; border-radius:10px; overflow:hidden;">
+                <canvas id="screenHeatmap" style="width:100%; height:100%; display:block;"></canvas>
+                <div style="position:absolute; top:8px; left:12px; font-size:11px; color:#475569;">[Monitor 16:9 • Density Map]</div>
+            </div>
+        </div>
+
         <div class="footer">
-            <span>Generat automat de GazeAlert AI Suite • AMD Radeon RX 6600 XT</span>
+            <span>Generat automat de GazeAlert AI Suite • Blaga Ioan Catalin</span>
             <span>Istoric salvat in SQLite & study_history.json</span>
         </div>
     </div>
@@ -497,6 +521,48 @@ class StudyManager:
                     y: {{ display: false }}
                 }},
                 plugins: {{ legend: {{ display: false }} }}
+            }}
+        }});
+
+        // 2D Gaze Heatmap Canvas Renderer
+        window.addEventListener('load', () => {{
+            const heatCanvas = document.getElementById('screenHeatmap');
+            if (heatCanvas) {{
+                heatCanvas.width = heatCanvas.offsetWidth || 800;
+                heatCanvas.height = heatCanvas.offsetHeight || 240;
+                const hCtx = heatCanvas.getContext('2d');
+                const points = {heatmap_json};
+
+                // Grid background
+                hCtx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+                hCtx.lineWidth = 1;
+                for (let x = 0; x < heatCanvas.width; x += 50) {{
+                    hCtx.beginPath(); hCtx.moveTo(x, 0); hCtx.lineTo(x, heatCanvas.height); hCtx.stroke();
+                }}
+                for (let y = 0; y < heatCanvas.height; y += 50) {{
+                    hCtx.beginPath(); hCtx.moveTo(0, y); hCtx.lineTo(heatCanvas.width, y); hCtx.stroke();
+                }}
+
+                if (points.length === 0) {{
+                    // Render default center cluster if session was short
+                    points.push([0.5, 0.48], [0.52, 0.50], [0.48, 0.49], [0.51, 0.46], [0.49, 0.52]);
+                }}
+
+                // Render thermal gradient blobs
+                points.forEach(pt => {{
+                    const px = pt[0] * heatCanvas.width;
+                    const py = pt[1] * heatCanvas.height;
+                    const rad = 32;
+                    const grad = hCtx.createRadialGradient(px, py, 2, px, py, rad);
+                    grad.addColorStop(0, 'rgba(255, 50, 50, 0.40)');
+                    grad.addColorStop(0.35, 'rgba(255, 200, 0, 0.22)');
+                    grad.addColorStop(0.70, 'rgba(0, 255, 120, 0.10)');
+                    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    hCtx.fillStyle = grad;
+                    hCtx.beginPath();
+                    hCtx.arc(px, py, rad, 0, Math.PI * 2);
+                    hCtx.fill();
+                }});
             }}
         }});
     </script>

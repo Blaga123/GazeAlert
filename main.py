@@ -339,6 +339,7 @@ def main():
     session_logger = SessionLogger()
 
     theme_mgr = ThemeManager(config.get("theme", "cyber_dark"))
+    monk_mode_enabled = bool(config.get("monk_mode_enabled", False))
 
     is_minimized_to_tray = False
 
@@ -472,6 +473,14 @@ def main():
             screen_gaze_pos = None
             if calibrator.is_calibrated and gaze.face_detected and len(gaze.raw_features) >= 8:
                 screen_gaze_pos = calibrator.predict_screen_pos(gaze.raw_features)
+
+            # Record point in Gaze Heatmap
+            if screen_gaze_pos is not None:
+                study_mgr.add_gaze_point(screen_gaze_pos[0], screen_gaze_pos[1])
+            elif gaze.face_detected and gaze.is_looking_at_screen:
+                norm_x = 0.5 + (gaze.total_gaze_yaw / 36.0)
+                norm_y = 0.5 - (gaze.total_gaze_pitch / 28.0)
+                study_mgr.add_gaze_point(norm_x, norm_y)
 
             # Away Timer State Machine
             now = time.time()
@@ -658,18 +667,21 @@ def main():
                     cv2.putText(frame, f"Pomo: {pomo_info} | Studiu: Nivel {study_mgr.current_level} ({study_mgr.total_xp} XP)", (25, panel_y + int(128 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.34 * scale, (0, 220, 255), 1, cv2.LINE_AA)
 
                 # 7. Calibration On-Screen Banner (if recently triggered)
-                if calib_banner_text and (now - calib_banner_time < 2.0):
-                    banner_w = int(450 * scale)
-                    banner_h = int(45 * scale)
-                    bx = (w - banner_w) // 2
-                    by = h // 2 - int(25 * scale)
-                    draw_glass_panel(frame, bx, by, banner_w, banner_h, bg_color=(0, 60, 20), alpha=0.88, border_color=(0, 255, 100))
-                    cv2.putText(frame, calib_banner_text, (bx + int(15 * scale), by + int(28 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.50 * scale, (0, 255, 150), max(1, int(2 * scale)), cv2.LINE_AA)
+                # 7. Monk Mode Distraction Shield Overlay
+                if monk_mode_enabled:
+                    if away_elapsed > 2.0:
+                        overlay = frame.copy()
+                        cv2.rectangle(overlay, (0, 0), (w, h), (0, 0, 45), -1)
+                        cv2.addWeighted(overlay, 0.60, frame, 0.40, 0, frame)
+                        cv2.rectangle(frame, (8, 8), (w - 8, h - 8), (0, 0, 255), max(3, int(5 * scale)))
+                        cv2.putText(frame, "MONK MODE: ATENTIE LA ECRAN!", (int(w * 0.18), int(h * 0.52)), cv2.FONT_HERSHEY_DUPLEX, 0.68 * scale, (0, 140, 255), 2, cv2.LINE_AA)
+                    else:
+                        cv2.putText(frame, "[MONK MODE ACTIV]", (w - int(155 * scale), h - 16), cv2.FONT_HERSHEY_SIMPLEX, 0.34 * scale, (0, 255, 120), 1, cv2.LINE_AA)
 
                 # 8. Bottom Controls Bar
                 snd_status = "ON" if alert_mgr.enable_sound else "OFF"
-                controls_text = f"[W] Widget | [H] Tray | [C] Calib | [P] Pomo | [S] Sunet: {snd_status} | [O] Tema | [E] Export | [Q] Exit"
-                cv2.putText(frame, controls_text, (20, h - 16), cv2.FONT_HERSHEY_SIMPLEX, 0.38 * scale, (180, 180, 180), 1, cv2.LINE_AA)
+                controls_text = f"[W] Widget | [H] Tray | [C] Calib | [K] 9-Pct | [N] Monk | [P] Pomo | [S] Sunet: {snd_status} | [O] Tema | [E] Export | [Q] Exit"
+                cv2.putText(frame, controls_text, (20, h - 16), cv2.FONT_HERSHEY_SIMPLEX, 0.34 * scale, (180, 180, 180), 1, cv2.LINE_AA)
 
                 cv2.imshow(window_name, frame)
                 key = cv2.waitKey(1) & 0xFF
@@ -780,6 +792,11 @@ def main():
                 calib_banner_text = f"WIDGET PLUTITOR: {'ACTIVAT' if is_pill_vis else 'ASCUNS'}"
                 calib_banner_time = time.time()
                 print(f"[+] Widget Plutitor Desktop (Frameless Pill): {'ACTIVAT' if is_pill_vis else 'ASCUNS'}")
+            elif key in [ord('n'), ord('N')]:
+                monk_mode_enabled = not monk_mode_enabled
+                calib_banner_text = f"MONK MODE: {'ACTIVAT 🛡️' if monk_mode_enabled else 'DEZACTIVAT'}"
+                calib_banner_time = time.time()
+                print(f"[+] Monk Mode (Distraction Shield): {'ACTIVAT' if monk_mode_enabled else 'DEZACTIVAT'}")
             elif key in [ord('e'), ord('E')]:
                 csv_p = session_logger.export_to_csv()
                 json_p = session_logger.export_to_json()
