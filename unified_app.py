@@ -619,8 +619,12 @@ class UnifiedGazeApp:
             cv2.rectangle(frame, (10, 10), (w - 10, 46), badge_color, 1)
             cv2.putText(frame, badge_text, (20, 34), cv2.FONT_HERSHEY_DUPLEX, 0.65, badge_color, 2, cv2.LINE_AA)
 
-            # Bottom Left Camera Diagnostic Overlay
-            cv2.putText(frame, f"Yaw: {gaze.head_yaw:+.1f} Pitch: {gaze.head_pitch:+.1f} | Dist: {int(gaze.distance_cm)}cm | {gaze.flow_state_zone[:18]}", (18, h - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.40 * scale, (0, 255, 180), 1, cv2.LINE_AA)
+            # Bottom Left Camera Diagnostic Overlay (Sleek dark HUD pill)
+            diag_text = f"Yaw: {gaze.head_yaw:+.1f}  Pitch: {gaze.head_pitch:+.1f} | Dist: {int(gaze.distance_cm)}cm | {gaze.flow_state_zone[:18]}"
+            (tw, th_text), _ = cv2.getTextSize(diag_text, cv2.FONT_HERSHEY_SIMPLEX, 0.40 * scale, 1)
+            cv2.rectangle(frame, (12, h - th_text - 18), (12 + tw + 16, h - 8), (15, 20, 28), -1)
+            cv2.rectangle(frame, (12, h - th_text - 18), (12 + tw + 16, h - 8), (30, 41, 59), 1)
+            cv2.putText(frame, diag_text, (20, h - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.40 * scale, (0, 255, 180), 1, cv2.LINE_AA)
 
             # Monk Mode Distraction Shield
             if self.monk_mode_enabled and self.away_elapsed > 2.0:

@@ -85,7 +85,7 @@ class ThreadedCamera:
         """Fetch the freshest frame instantly in 0 ms without blocking."""
         with self.lock:
             if self.latest_frame is not None:
-                return True, self.latest_frame
+                return True, self.latest_frame.copy()
             return False, None
 
     def isOpened(self) -> bool:
