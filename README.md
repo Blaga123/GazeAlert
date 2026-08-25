@@ -13,6 +13,12 @@
 <br/>
 
 <p align="center">
+  <a href="https://github.com/Blaga123/GazeAlert/releases/latest">
+    <img src="https://img.shields.io/badge/Download%20Installer-Windows%20v2.0.0%20(64--bit)-00E676?style=for-the-badge&logo=windows&logoColor=black" alt="Download Windows Installer"/>
+  </a>
+</p>
+
+<p align="center">
   <b>GazeAlert AI</b> transforms any standard RGB webcam into a <b>high-precision medical-grade eye tracker</b> and <b>autonomous cognitive ergonomics coach</b>.
   Built on sub-pixel integro-differential gradient operators, anatomical foveal kappa compensation, and real-time Yerkes-Dodson cognitive flow modeling.
 </p>
