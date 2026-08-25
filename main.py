@@ -492,6 +492,13 @@ def main():
             if gaze.face_detected:
                 alert_mgr.check_posture_and_alert(gaze.is_slouching, gaze.distance_cm)
 
+            # Check Adaptive Pomodoro Flow Auto-Extension
+            flow_msg = study_mgr.check_flow_extension(gaze.flow_state_zone)
+            if flow_msg:
+                calib_banner_text = flow_msg
+                calib_banner_time = now
+                print(f"\n[+] {flow_msg}")
+
             # Update System Tray status orb
             tray_manager.update_status(gaze.is_looking_at_screen, is_alert)
 

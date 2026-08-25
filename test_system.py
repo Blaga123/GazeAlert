@@ -60,11 +60,12 @@ def test_gaze_detector_precision():
     is_reading, is_stuck, label = detector._analyze_reading_saccades(0.5, time.time())
     assert isinstance(is_reading, bool)
     
-    # Test cognitive load calculation
-    ratio, cog, cog_label = detector._analyze_pupil_and_cognitive_load(blank, (100, 100), (150, 100), 12.0, time.time())
+    # Test cognitive load calculation with PLR light compensation
+    ratio, cog, cog_label, amb_lux = detector._analyze_pupil_and_cognitive_load(blank, (100, 100), (150, 100), 12.0, time.time())
     assert 0 <= cog <= 100
+    assert 0.0 <= amb_lux <= 255.0
     detector.close()
-    print("  -> Detectorul cu Pupillometrie, Saccade si PERCLOS a trecut testul.")
+    print("  -> Detectorul cu Pupillometrie, Saccade, PLR si PERCLOS a trecut testul.")
 
 
 def test_facial_expressions():

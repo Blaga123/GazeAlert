@@ -58,8 +58,12 @@ class GazeResult:
     is_stuck_reading: bool = False
     reading_state_label: str = "STABIL"
     
-    # PERCLOS & Expression
+    # PERCLOS, Fatigue & Cognitive Flow Zone
     perclos_score: float = 0.04
+    flow_state_zone: str = "DEEP_FLOW (Zona Optima)"
+    eye_strain_index: int = 15
+    is_confused: bool = False
+    ambient_lux: float = 120.0
     expression_label: str = "CONCENTRAT"
     expression_emoji: str = "[FOCUS]"
     smile_score: float = 0.0
@@ -386,6 +390,9 @@ class GazeDetector:
         brow_down = max(blend_dict.get("browDownLeft", 0.0), blend_dict.get("browDownRight", 0.0))
         filt_frown = self.frown_filter.filter(brow_down, now)
 
+        nose_sneer = max(blend_dict.get("noseSneerLeft", 0.0), blend_dict.get("noseSneerRight", 0.0))
+        is_confused = bool(filt_frown > 0.35 and nose_sneer > 0.15 and avg_blink < 0.35)
+
         jaw_open = blend_dict.get("jawOpen", 0.0)
         filt_jaw = self.jaw_filter.filter(jaw_open, now)
 
@@ -405,8 +412,11 @@ class GazeDetector:
         if is_yawn:
             label = "CASCAT / OBOSEALA"
             emoji = "[YAWN]"
+        elif is_confused:
+            label = "CONFUSIE / ANALIZA DIFICILA"
+            emoji = "[CONFUSED]"
         elif filt_smile > 0.40:
-            label = "ZAMBITOR / RELAXAT"
+            label = "ZAMBITOR / FLOW"
             emoji = "[:)]"
         elif filt_frown > 0.35:
             label = "CONCENTRARE INTENSA"
@@ -415,7 +425,7 @@ class GazeDetector:
             label = "CONCENTRAT"
             emoji = "[FOCUS]"
 
-        return label, emoji, filt_smile, filt_frown, 0.0, filt_jaw, is_yawn, self._yawn_count, 0.0, 15.0
+        return label, emoji, filt_smile, filt_frown, is_confused, filt_jaw, is_yawn, self._yawn_count, 0.0, 15.0
 
     def _analyze_pupil_and_cognitive_load(
         self,
@@ -423,8 +433,9 @@ class GazeDetector:
         left_iris_pt: Tuple[int, int],
         right_iris_pt: Tuple[int, int],
         iris_radius_px: float,
-        now: float
-    ) -> Tuple[float, int, str]:
+        now: float,
+        is_confused: bool = False
+    ) -> Tuple[float, int, str, float]:
         h, w = frame.shape[:2]
         r = max(5, int(iris_radius_px))
         x, y = left_iris_pt
@@ -452,19 +463,36 @@ class GazeDetector:
                     area_fraction = pupil_pixels / float(total_inner)
                     pupil_ratio = 0.26 + 0.22 * math.sqrt(max(0.05, min(0.95, area_fraction)))
 
-        filtered_ratio = self.pupil_filter.filter(pupil_ratio, now)
+        # Dynamic Screen Light Compensation (PLR - Pupillary Light Reflex)
+        skin_y1 = max(0, int(y - r * 2.2))
+        skin_y2 = max(0, int(y - r * 1.0))
+        skin_x1 = max(0, int(x - r * 1.2))
+        skin_x2 = min(w, int(x + r * 1.2))
+        ambient_lux = 120.0
+        if skin_y2 > skin_y1 and skin_x2 > skin_x1:
+            skin_patch = frame[skin_y1:skin_y2, skin_x1:skin_x2]
+            if skin_patch.size > 0:
+                ambient_lux = float(np.mean(cv2.cvtColor(skin_patch, cv2.COLOR_BGR2GRAY)))
+
+        # Brighter screen makes pupil constrict physically -> normalize offset
+        lux_offset = (ambient_lux - 120.0) / 255.0 * 0.05
+        compensated_ratio = pupil_ratio + lux_offset
+
+        filtered_ratio = self.pupil_filter.filter(compensated_ratio, now)
         # Normal human pupil ratio is ~0.30 - 0.44
         dilation_norm = (filtered_ratio - 0.32) / 0.10
         cog_load = int(max(20, min(95, 60 + dilation_norm * 25)))
 
-        if cog_load > 78:
+        if is_confused:
+            label = "EFORT COGNITIV RIDICAT (DIFICULTATE)"
+        elif cog_load > 78:
             label = "PROCESARE MENTALA ACTIVA"
         elif cog_load > 48:
             label = "CONCENTRARE NORMALA"
         else:
             label = "PRIVIRE IN GOL / RELAXARE"
 
-        return filtered_ratio, cog_load, label
+        return filtered_ratio, cog_load, label, ambient_lux
 
     def _analyze_reading_saccades(self, current_iris_x: float, now: float) -> Tuple[bool, bool, str]:
         self._gaze_x_history.append((now, current_iris_x))
@@ -660,23 +688,7 @@ class GazeDetector:
         result.left_eye_points = landmarks_2d[self.left_eye_contour].astype(np.int32)
         result.right_eye_points = landmarks_2d[self.right_eye_contour].astype(np.int32)
 
-        # 7. Pupillometry & Reading
-        if result.left_iris_center and result.right_iris_center:
-            p_ratio, cog_load, cog_label = self._analyze_pupil_and_cognitive_load(
-                frame, result.left_iris_center, result.right_iris_center, iris_radius_px, now
-            )
-            result.pupil_diameter_ratio = p_ratio
-            result.cognitive_load_pct = cog_load
-            result.pupil_state_label = cog_label
-            result.left_pupil_radius = max(2, int(iris_radius_px * p_ratio))
-            result.right_pupil_radius = max(2, int(iris_radius_px * p_ratio))
-
-            is_reading, is_stuck, read_label = self._analyze_reading_saccades(result.left_iris_center[0] / w, now)
-            result.is_reading_active = is_reading
-            result.is_stuck_reading = is_stuck
-            result.reading_state_label = read_label
-
-        # 8. Expressions & PERCLOS
+        # 7. Expressions & PERCLOS
         avg_blink = (result.left_blink + result.right_blink) / 2.0
         is_closed = avg_blink > 0.50 or filtered_ear < 0.15
         self._closure_history.append(1.0 if is_closed else 0.0)
@@ -687,7 +699,7 @@ class GazeDetector:
             expr_emoji,
             filt_smile,
             filt_frown,
-            _,
+            is_confused,
             filt_jaw,
             is_yawn,
             yawn_cnt,
@@ -699,10 +711,38 @@ class GazeDetector:
         result.expression_emoji = expr_emoji
         result.smile_score = filt_smile
         result.frown_score = filt_frown
+        result.is_confused = is_confused
         result.is_yawning = is_yawn
         result.yawn_count = yawn_cnt
 
-        # 9. Focus Scoring & Multi-Modal Context-Aware State Classifier
+        # 8. Pupillometry with Screen Light (PLR) Compensation & Reading Saccades
+        if result.left_iris_center and result.right_iris_center:
+            p_ratio, cog_load, cog_label, amb_lux = self._analyze_pupil_and_cognitive_load(
+                frame, result.left_iris_center, result.right_iris_center, iris_radius_px, now, is_confused=is_confused
+            )
+            result.pupil_diameter_ratio = p_ratio
+            result.cognitive_load_pct = cog_load
+            result.pupil_state_label = cog_label
+            result.ambient_lux = amb_lux
+            result.left_pupil_radius = max(2, int(iris_radius_px * p_ratio))
+            result.right_pupil_radius = max(2, int(iris_radius_px * p_ratio))
+
+            is_reading, is_stuck, read_label = self._analyze_reading_saccades(result.left_iris_center[0] / w, now)
+            result.is_reading_active = is_reading
+            result.is_stuck_reading = is_stuck
+            result.reading_state_label = read_label
+
+        # 9. Yerkes-Dodson Cognitive Flow Zone Classifier
+        if result.cognitive_load_pct >= 62 and result.perclos_score < 0.08 and self.focus_confidence > 0.75:
+            result.flow_state_zone = "DEEP_FLOW (Optimal)"
+        elif result.cognitive_load_pct > 86 or is_confused:
+            result.flow_state_zone = "HIGH_COMPLEXITY (Efort Intens)"
+        elif result.perclos_score > 0.12 or result.is_yawning:
+            result.flow_state_zone = "FATIGUE_OVERLOAD (Pauza Recomandata)"
+        else:
+            result.flow_state_zone = "STABLE_FOCUS (Concentrare Normala)"
+
+        # 10. Focus Scoring & Multi-Modal Context-Aware State Classifier
         gaze_dist_sq = (result.total_gaze_yaw / 26.0) ** 2 + (result.total_gaze_pitch / 22.0) ** 2
         p_gaze = math.exp(-0.5 * min(10.0, gaze_dist_sq))
         p_eyes = 1.0 - max(0.0, min(1.0, (avg_blink - 0.25) / 0.65))

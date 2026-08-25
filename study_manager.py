@@ -237,8 +237,32 @@ class StudyManager:
                 self.is_on_break = not self.is_on_break
                 if self.is_on_break:
                     self.timer_seconds_left = self.break_duration_sec
+                    self._extensions_count = 0
                 else:
                     self.timer_seconds_left = self.focus_duration_sec
+                    self._extensions_count = 0
+
+    def check_flow_extension(self, flow_zone: str) -> Optional[str]:
+        """
+        Smart Flow Extension:
+        If user is in certified Deep Flow (efficiency >= 85%),
+        and Pomodoro timer is down to the last 20 seconds, automatically extend by +5 minutes
+        without breaking their concentration!
+        """
+        if not self.is_pomodoro_active or self.is_on_break:
+            return None
+
+        if not hasattr(self, '_extensions_count'):
+            self._extensions_count = 0
+
+        if self.timer_seconds_left <= 20.0 and self._extensions_count < 2:
+            if "DEEP_FLOW" in flow_zone and self.get_efficiency_score() >= 85:
+                self.timer_seconds_left += 300.0  # +5 min
+                self.focus_duration_sec += 300.0
+                self._extensions_count += 1
+                self._bonus_xp = getattr(self, '_bonus_xp', 0) + 75
+                return "[FLOW ACTIV] Sesiune Pomodoro prelungita automat cu +5 min!"
+        return None
 
     def get_efficiency_score(self) -> int:
         if self.stats.total_study_seconds < 10.0:
