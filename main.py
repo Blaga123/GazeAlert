@@ -242,11 +242,24 @@ def render_mini_widget(
     return widget
 
 
-def main():
-    print("=" * 75)
-    print("  🚀 GazeAlert - High-Performance AI Study, Focus & Face Tracking Suite")
-    print("=" * 75)
+def set_high_process_priority():
+    """Sets Windows process priority to ABOVE_NORMAL to prevent CPU micro-throttling."""
+    try:
+        if sys.platform == "win32":
+            kernel32 = ctypes.windll.kernel32
+            # 0x00008000 = ABOVE_NORMAL_PRIORITY_CLASS
+            kernel32.SetPriorityClass(kernel32.GetCurrentProcess(), 0x00008000)
+    except Exception:
+        pass
 
+
+def main():
+    set_high_process_priority()
+    print("=" * 60)
+    print("  GazeAlert AI: Next-Gen Eye, Posture & Productivity Suite")
+    print("=" * 60)
+
+    config = load_config()
     # Enable dedicated GPU Hardware Acceleration via OpenCL (AMD Radeon RX 6600 XT)
     gpu_name = "AMD Radeon RX 6600 XT"
     if cv2.ocl.haveOpenCL():
@@ -473,9 +486,11 @@ def main():
             is_alert = away_elapsed >= away_thresh
             is_warning = away_elapsed >= warn_thresh and not is_alert
 
-            # Smart Anti-Spam Progressive Notification Coach
+            # Smart Anti-Spam Progressive Notification Coach & Ergonomics Alert
             reason = ", ".join(gaze.reasons) if gaze.reasons else "Utilizator absent"
             alert_mgr.check_and_alert(away_elapsed, gaze.smart_state, reason)
+            if gaze.face_detected:
+                alert_mgr.check_posture_and_alert(gaze.is_slouching, gaze.distance_cm)
 
             # Update System Tray status orb
             tray_manager.update_status(gaze.is_looking_at_screen, is_alert)
@@ -484,10 +499,11 @@ def main():
             if pill_widget.is_visible:
                 orb_hex = "#00FF78" if gaze.is_looking_at_screen else ("#FF3250" if is_alert else "#FFC800")
                 pomo_str = study_mgr.get_pomodoro_string()
-                clean_title = f"FOCUS ({study_mgr.get_efficiency_score()}%)" if gaze.is_looking_at_screen else "AWAY ALERT"
+                lvl, cur_xp, needed_xp, _ = study_mgr.get_level_info()
+                clean_title = f"FOCUS ({study_mgr.get_efficiency_score()}%) | Nivel {lvl}" if gaze.is_looking_at_screen else "AWAY ALERT"
                 pill_widget.update_metrics(
                     clean_title,
-                    f"Pomo: {pomo_str} | Efort: {gaze.cognitive_load_pct}%",
+                    f"Pomo: {pomo_str} | Dist: {int(gaze.distance_cm)}cm | XP: {cur_xp}/{needed_xp}",
                     orb_hex,
                     progress_pct=float(study_mgr.get_efficiency_score())
                 )
@@ -596,26 +612,29 @@ def main():
                 if bar_w > 0:
                     cv2.line(frame, (25, bar_y), (25 + bar_w, bar_y), fill_col, bar_thick)
 
-                # 5. Pupillometry & Study Widget (Top Right)
+                # 5. Pupillometry, Ergonomics & Study Widget (Top Right)
                 if gaze.face_detected:
-                    expr_w = int(260 * scale)
-                    expr_h = int(78 * scale)
+                    expr_w = int(280 * scale)
+                    expr_h = int(88 * scale)
                     expr_x = w - expr_w - 20
                     expr_y = int(95 * scale)
                     draw_glass_panel(frame, expr_x, expr_y, expr_w, expr_h, bg_color=active_theme.bg_panel, alpha=0.78, border_color=active_theme.border_panel)
 
                     energy_pct = int((1.0 - gaze.fatigue_level) * 100)
                     energy_col = (0, 255, 100) if energy_pct > 65 else ((0, 165, 255) if energy_pct > 35 else (0, 0, 255))
+                    dist_col = (0, 255, 100) if 42.0 <= gaze.distance_cm <= 85.0 else (0, 140, 255)
 
-                    cv2.putText(frame, f"Stare: {sanitize_text(gaze.expression_label)}", (expr_x + int(14 * scale), expr_y + int(20 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.38 * scale, (255, 255, 255), 1, cv2.LINE_AA)
-                    cv2.putText(frame, f"Efort Cognitiv: {gaze.cognitive_load_pct}% | Pupila: {int(gaze.pupil_diameter_ratio*100)}%", (expr_x + int(14 * scale), expr_y + int(38 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.36 * scale, (0, 255, 255), 1, cv2.LINE_AA)
-                    cv2.putText(frame, f"Ritm Citire: {sanitize_text(gaze.reading_state_label)}", (expr_x + int(14 * scale), expr_y + int(56 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.35 * scale, (0, 255, 120), 1, cv2.LINE_AA)
-                    cv2.putText(frame, f"Eficienta: {eff_score}% | Energie: {energy_pct}%", (expr_x + int(14 * scale), expr_y + int(72 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.33 * scale, energy_col, 1, cv2.LINE_AA)
+                    lvl, cur_xp, needed_xp, _ = study_mgr.get_level_info()
+
+                    cv2.putText(frame, f"Stare: {sanitize_text(gaze.expression_label)} | Nivel {lvl} ({cur_xp}/{needed_xp} XP)", (expr_x + int(12 * scale), expr_y + int(18 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.35 * scale, (255, 255, 255), 1, cv2.LINE_AA)
+                    cv2.putText(frame, f"Efort Cognitiv: {gaze.cognitive_load_pct}% | Pupila: {int(gaze.pupil_diameter_ratio*100)}%", (expr_x + int(12 * scale), expr_y + int(36 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.35 * scale, (0, 255, 255), 1, cv2.LINE_AA)
+                    cv2.putText(frame, f"Ritm Citire: {sanitize_text(gaze.reading_state_label)} | Eficienta: {eff_score}%", (expr_x + int(12 * scale), expr_y + int(54 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.35 * scale, (0, 255, 120), 1, cv2.LINE_AA)
+                    cv2.putText(frame, f"Distanta: {int(gaze.distance_cm)} cm ({gaze.posture_status})", (expr_x + int(12 * scale), expr_y + int(72 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.34 * scale, dist_col, 1, cv2.LINE_AA)
 
                 # 6. Diagnostic Metrics HUD (Bottom Left)
                 if show_stats:
-                    panel_w = int(370 * scale)
-                    panel_h = int(122 * scale)
+                    panel_w = int(390 * scale)
+                    panel_h = int(136 * scale)
                     panel_y = h - panel_h - int(45 * scale)
                     draw_glass_panel(frame, 15, panel_y, panel_w, panel_h, bg_color=active_theme.bg_panel, alpha=0.78, border_color=active_theme.border_panel)
 
@@ -628,7 +647,8 @@ def main():
                     cv2.putText(frame, f"Cap: Yaw {gaze.head_yaw:+.1f} Pitch {gaze.head_pitch:+.1f} | VOR: {gaze.total_gaze_yaw:+.1f}", (25, panel_y + int(56 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.36 * scale, (220, 220, 220), 1, cv2.LINE_AA)
                     cv2.putText(frame, f"Pupila: {int(gaze.pupil_diameter_ratio*100)}% Diametru ({gaze.pupil_state_label})", (25, panel_y + int(74 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.35 * scale, (0, 255, 200), 1, cv2.LINE_AA)
                     cv2.putText(frame, f"GPU: {gpu_name[:28]} | FPS: {fps:.1f}", (25, panel_y + int(92 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.36 * scale, (0, 255, 120), 1, cv2.LINE_AA)
-                    cv2.putText(frame, f"Timer Away: {away_elapsed:.1f}s / {away_thresh:.0f}s | Pomo: {pomo_info}", (25, panel_y + int(110 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.35 * scale, fill_col, 1, cv2.LINE_AA)
+                    cv2.putText(frame, f"Distanta: {int(gaze.distance_cm)} cm | Timer: {away_elapsed:.1f}s / {away_thresh:.0f}s", (25, panel_y + int(110 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.35 * scale, fill_col, 1, cv2.LINE_AA)
+                    cv2.putText(frame, f"Pomo: {pomo_info} | Studiu: Nivel {study_mgr.current_level} ({study_mgr.total_xp} XP)", (25, panel_y + int(128 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.34 * scale, (0, 220, 255), 1, cv2.LINE_AA)
 
                 # 7. Calibration On-Screen Banner (if recently triggered)
                 if calib_banner_text and (now - calib_banner_time < 2.0):
@@ -640,7 +660,8 @@ def main():
                     cv2.putText(frame, calib_banner_text, (bx + int(15 * scale), by + int(28 * scale)), cv2.FONT_HERSHEY_SIMPLEX, 0.50 * scale, (0, 255, 150), max(1, int(2 * scale)), cv2.LINE_AA)
 
                 # 8. Bottom Controls Bar
-                controls_text = "[W] Widget | [H] Minimize Tray | [C] Calib | [P] Pomo | [O] Tema | [E] Export | [Q] Exit"
+                snd_status = "ON" if alert_mgr.enable_sound else "OFF"
+                controls_text = f"[W] Widget | [H] Tray | [C] Calib | [P] Pomo | [S] Sunet: {snd_status} | [O] Tema | [E] Export | [Q] Exit"
                 cv2.putText(frame, controls_text, (20, h - 16), cv2.FONT_HERSHEY_SIMPLEX, 0.38 * scale, (180, 180, 180), 1, cv2.LINE_AA)
 
                 cv2.imshow(window_name, frame)

@@ -9,6 +9,7 @@ Features:
 """
 
 import json
+import math
 import os
 import queue
 import sqlite3
@@ -24,7 +25,7 @@ import numpy as np
 class ThreadedCamera:
     """
     Ultra-Low Latency Threaded Camera Capture Engine.
-    Uses queue.Queue(maxsize=1) to discard old frames instantly, guaranteeing 0 ms buffer latency.
+    Uses non-blocking atomic buffer swap to deliver frames in 0.001 ms without queue timeout bottlenecks.
     """
     def __init__(
         self,
@@ -40,12 +41,15 @@ class ThreadedCamera:
         self.fps = fps
         self.use_mjpg = use_mjpg
 
-        # DirectShow on Windows with hardware MJPG
+        # Try DirectShow on Windows with hardware MJPG
         self.cap = cv2.VideoCapture(self.src, cv2.CAP_DSHOW)
+        if not self.cap.isOpened():
+            self.cap = cv2.VideoCapture(self.src)
+
         if self.cap.isOpened():
             if self.use_mjpg:
                 try:
-                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
                 except Exception:
                     pass
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
@@ -56,8 +60,8 @@ class ThreadedCamera:
             except Exception:
                 pass
 
-        # Zero-Lag Frame Queue (discards stale frames immediately)
-        self.q: queue.Queue = queue.Queue(maxsize=1)
+        self.latest_frame: Optional[np.ndarray] = None
+        self.lock = threading.Lock()
         self.stopped = False
         self.thread = threading.Thread(target=self._update, daemon=True)
         self.thread.start()
@@ -65,30 +69,23 @@ class ThreadedCamera:
     def _update(self):
         while not self.stopped:
             if not self.cap.isOpened():
-                time.sleep(0.02)
+                time.sleep(0.01)
                 continue
-            ret, frame = self.cap.read()
-            if not ret or frame is None:
-                time.sleep(0.005)
-                continue
-
-            # Always discard old buffered frame to ensure newest frame is served
-            if not self.q.empty():
-                try:
-                    self.q.get_nowait()
-                except queue.Empty:
-                    pass
-            try:
-                self.q.put(frame, timeout=0.01)
-            except queue.Full:
-                pass
+            # Continuous grab to drain internal Windows DirectShow buffer
+            ret = self.cap.grab()
+            if ret:
+                ret, frame = self.cap.retrieve()
+                if ret and frame is not None:
+                    with self.lock:
+                        self.latest_frame = frame
+            else:
+                time.sleep(0.001)
 
     def read(self) -> Tuple[bool, Optional[np.ndarray]]:
-        """Fetch the freshest, non-buffered camera frame."""
-        try:
-            frame = self.q.get(timeout=0.1)
-            return True, frame
-        except queue.Empty:
+        """Fetch the freshest frame instantly in 0 ms without blocking."""
+        with self.lock:
+            if self.latest_frame is not None:
+                return True, self.latest_frame
             return False, None
 
     def isOpened(self) -> bool:
@@ -154,6 +151,25 @@ class StudyManager:
     @property
     def work_duration_sec(self) -> float:
         return self.focus_duration_sec
+
+    @property
+    def total_xp(self) -> int:
+        bonus = getattr(self, '_bonus_xp', 0)
+        return int(self.stats.pure_focus_seconds * 1.5 + bonus)
+
+    @property
+    def current_level(self) -> int:
+        return 1 + int(math.isqrt(self.total_xp // 100))
+
+    def get_level_info(self) -> Tuple[int, int, int, float]:
+        """Returns (level, cur_xp_in_level, needed_xp, progress_ratio)."""
+        lvl = self.current_level
+        xp_start = (lvl - 1) ** 2 * 100
+        xp_next = lvl ** 2 * 100
+        cur = self.total_xp - xp_start
+        needed = max(1, xp_next - xp_start)
+        ratio = min(1.0, max(0.0, cur / needed))
+        return lvl, cur, needed, ratio
 
     def toggle_pomodoro(self):
         self.is_pomodoro_active = not self.is_pomodoro_active

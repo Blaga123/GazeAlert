@@ -159,8 +159,27 @@ class AlertManager:
         """Legacy compatibility method."""
         self.check_and_alert(away_duration, "LOOKING_AWAY", reason)
 
+    def check_posture_and_alert(self, is_slouching: bool, distance_cm: float):
+        """Discreet posture reminder for slouching or dangerous eye-strain distance (<40cm)."""
+        if not self.enable_sound:
+            return
+        now = time.time()
+        if not hasattr(self, '_last_posture_alert'):
+            self._last_posture_alert = 0.0
+            self._slouch_start_time = None
+
+        is_bad_posture = is_slouching or (distance_cm < 40.0)
+        if is_bad_posture:
+            if self._slouch_start_time is None:
+                self._slouch_start_time = now
+            elif (now - self._slouch_start_time > 6.0) and (now - self._last_posture_alert > 25.0):
+                self._last_posture_alert = now
+                threading.Thread(target=lambda: play_sound_async("posture_chime"), daemon=True).start()
+        else:
+            self._slouch_start_time = None
+
     def trigger_test_alert(self):
-        """Trigger an instant gentle test chime."""
+        """Manually test alert sounds and popups."""
         threading.Thread(target=self._play_soft_harmonic_chime, daemon=True).start()
 
     def toggle_sound(self) -> bool:

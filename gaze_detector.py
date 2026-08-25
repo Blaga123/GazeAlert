@@ -69,11 +69,14 @@ class GazeResult:
     fatigue_level: float = 0.0
     blink_rate_bpm: float = 15.0
     
-    # Biometrics
+    # Biometrics & Ergonomics
     left_ear: float = 0.0
     right_ear: float = 0.0
     ipd_pixels: float = 60.0
     ipd_scale_factor: float = 1.0
+    distance_cm: float = 60.0
+    posture_status: str = "DISTANTA OPTIMA"
+    is_slouching: bool = False
     
     # Visuals
     status_label: str = "NO_FACE"
@@ -127,16 +130,16 @@ class GazeDetector:
         self._auto_calib_max_samples = 120
         self._auto_calib_alpha = 0.003
 
-        # Precision 1-Euro Adaptive Filters
-        self.yaw_filter = OneEuroFilter(min_cutoff=0.4, beta=0.040)
-        self.pitch_filter = OneEuroFilter(min_cutoff=0.4, beta=0.040)
-        self.roll_filter = OneEuroFilter(min_cutoff=0.5, beta=0.035)
-        self.gaze_yaw_filter = OneEuroFilter(min_cutoff=0.5, beta=0.045)
-        self.gaze_pitch_filter = OneEuroFilter(min_cutoff=0.5, beta=0.045)
-        self.left_iris_filter = OneEuroFilter2D(min_cutoff=0.5, beta=0.045)
-        self.right_iris_filter = OneEuroFilter2D(min_cutoff=0.5, beta=0.045)
-        self.ear_filter = OneEuroFilter(min_cutoff=1.0, beta=0.030)
-        self.pupil_filter = OneEuroFilter(min_cutoff=0.3, beta=0.010)
+        # Precision 1-Euro Adaptive Filters (Zero-Lag Instant Snap & Jitter-Free)
+        self.yaw_filter = OneEuroFilter(min_cutoff=1.0, beta=0.180)
+        self.pitch_filter = OneEuroFilter(min_cutoff=1.0, beta=0.180)
+        self.roll_filter = OneEuroFilter(min_cutoff=1.0, beta=0.150)
+        self.gaze_yaw_filter = OneEuroFilter(min_cutoff=1.2, beta=0.220)
+        self.gaze_pitch_filter = OneEuroFilter(min_cutoff=1.2, beta=0.220)
+        self.left_iris_filter = OneEuroFilter2D(min_cutoff=1.2, beta=0.250)
+        self.right_iris_filter = OneEuroFilter2D(min_cutoff=1.2, beta=0.250)
+        self.ear_filter = OneEuroFilter(min_cutoff=1.2, beta=0.080)
+        self.pupil_filter = OneEuroFilter(min_cutoff=0.6, beta=0.050)
 
         # Expression Filters
         self.smile_filter = OneEuroFilter(min_cutoff=0.8, beta=0.01)
@@ -249,40 +252,43 @@ class GazeDetector:
         best_score = -1.0
         best_cx, best_cy, best_r = cx, cy, r_base
 
-        # Fine sub-pixel search grid around initial center
-        for dcx in [-1.0, 0.0, 1.0]:
-            for dcy in [-1.0, 0.0, 1.0]:
-                for dr in [-1.5, -0.75, 0.0, 0.75, 1.5]:
-                    cur_cx = cx + dcx
-                    cur_cy = cy + dcy
-                    cur_r = r_base + dr
-                    if cur_r < 2.5:
-                        continue
+        # Pre-computed fast trigonometric angles
+        sin_cos_table = getattr(self, '_daug_sin_cos', None)
+        if sin_cos_table is None:
+            angles = np.linspace(0, 2 * math.pi, 12, endpoint=False)
+            sin_cos_table = [(math.cos(a), math.sin(a)) for a in angles]
+            self._daug_sin_cos = sin_cos_table
 
-                    # 16-point circular integration ring inside vs outside
-                    r_in = cur_r - 1.2
-                    r_out = cur_r + 1.2
-                    angles = np.linspace(0, 2 * math.pi, 16, endpoint=False)
+        # Fast search grid
+        for dcx, dcy in [(-0.8, 0.0), (0.8, 0.0), (0.0, -0.8), (0.0, 0.8), (0.0, 0.0)]:
+            for dr in [-0.8, 0.0, 0.8]:
+                cur_cx = cx + dcx
+                cur_cy = cy + dcy
+                cur_r = r_base + dr
+                if cur_r < 2.5:
+                    continue
 
-                    sum_in, sum_out = 0.0, 0.0
-                    valid_pts = 0
-                    for a in angles:
-                        xi_in = int(cur_cx + r_in * math.cos(a))
-                        yi_in = int(cur_cy + r_in * math.sin(a))
-                        xi_out = int(cur_cx + r_out * math.cos(a))
-                        yi_out = int(cur_cy + r_out * math.sin(a))
+                r_in = cur_r - 1.2
+                r_out = cur_r + 1.2
 
-                        if 0 <= xi_in < w and 0 <= yi_in < h and 0 <= xi_out < w and 0 <= yi_out < h:
-                            sum_in += float(gray[yi_in, xi_in])
-                            sum_out += float(gray[yi_out, xi_out])
-                            valid_pts += 1
+                sum_in, sum_out = 0.0, 0.0
+                valid_pts = 0
+                for cos_a, sin_a in sin_cos_table:
+                    xi_in = int(cur_cx + r_in * cos_a)
+                    yi_in = int(cur_cy + r_in * sin_a)
+                    xi_out = int(cur_cx + r_out * cos_a)
+                    yi_out = int(cur_cy + r_out * sin_a)
 
-                    if valid_pts >= 12:
-                        # Radial gradient = intensity difference across boundary
-                        gradient = (sum_out - sum_in) / float(valid_pts)
-                        if gradient > best_score:
-                            best_score = gradient
-                            best_cx, best_cy, best_r = cur_cx, cur_cy, cur_r
+                    if 0 <= xi_in < w and 0 <= yi_in < h and 0 <= xi_out < w and 0 <= yi_out < h:
+                        sum_in += float(gray[yi_in, xi_in])
+                        sum_out += float(gray[yi_out, xi_out])
+                        valid_pts += 1
+
+                if valid_pts >= 8:
+                    gradient = (sum_out - sum_in) / float(valid_pts)
+                    if gradient > best_score:
+                        best_score = gradient
+                        best_cx, best_cy, best_r = cur_cx, cur_cy, cur_r
 
         return best_cx, best_cy, best_r
 
@@ -487,7 +493,16 @@ class GazeDetector:
         h, w = frame.shape[:2]
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Fast neural inference optimization: 640px is optimal for MediaPipe FaceLandmarker
+        if w > 640:
+            scale_inf = 640.0 / w
+            inf_w = 640
+            inf_h = int(h * scale_inf)
+            inf_frame = cv2.resize(frame, (inf_w, inf_h), interpolation=cv2.INTER_LINEAR)
+        else:
+            inf_frame = frame
+
+        rgb_frame = cv2.cvtColor(inf_frame, cv2.COLOR_BGR2RGB)
         mp_img = self.mp_image(image_format=self.mp_image_format.SRGB, data=rgb_frame)
 
         detection_result = self.task_landmarker.detect(mp_img)
@@ -544,11 +559,15 @@ class GazeDetector:
 
         # 3. Continuous Background Self-Calibration
         if self.auto_calibration_enabled:
-            if self._auto_calib_samples < self._auto_calib_max_samples:
+            if self._auto_calib_samples == 0:
+                self.calibrated_yaw = filtered_yaw
+                self.calibrated_pitch = filtered_pitch
+                self._auto_calib_samples = 1
+            elif self._auto_calib_samples < self._auto_calib_max_samples:
                 self._auto_calib_samples += 1
                 self.calibrated_yaw = (1.0 - 0.05) * self.calibrated_yaw + 0.05 * filtered_yaw
                 self.calibrated_pitch = (1.0 - 0.05) * self.calibrated_pitch + 0.05 * filtered_pitch
-            elif self.focus_confidence > 0.85:
+            elif self.focus_confidence > 0.70:
                 self.calibrated_yaw = (1.0 - self._auto_calib_alpha) * self.calibrated_yaw + self._auto_calib_alpha * filtered_yaw
                 self.calibrated_pitch = (1.0 - self._auto_calib_alpha) * self.calibrated_pitch + self._auto_calib_alpha * filtered_pitch
 
@@ -610,12 +629,27 @@ class GazeDetector:
             result.left_gaze_ray_end = (int(filt_l_iris[0] + ray_dx), int(filt_l_iris[1] + ray_dy))
             result.right_gaze_ray_end = (int(filt_r_iris[0] + ray_dx), int(filt_r_iris[1] + ray_dy))
 
-        # 6. IPD & EAR
+        # 6. IPD, Distance & Ergonomics
         left_eye_outer = landmarks_2d[33]
         right_eye_outer = landmarks_2d[263]
         ipd_current = float(np.linalg.norm(right_eye_outer - left_eye_outer))
         result.ipd_pixels = ipd_current
         result.ipd_scale_factor = ipd_current / max(10.0, self.baseline_ipd)
+
+        # Distance to screen in cm (Pinhole camera formula)
+        # Average adult IPD is 6.3 cm; focal length approx w (1280px)
+        est_dist = round((w * 6.3) / max(15.0, ipd_current), 1)
+        result.distance_cm = max(20.0, min(150.0, est_dist))
+
+        if result.distance_cm < 42.0:
+            result.posture_status = "PREA APROAPE (<42cm)"
+        elif result.distance_cm > 85.0:
+            result.posture_status = "PREA DEPARTE (>85cm)"
+        else:
+            result.posture_status = "OPTIM (Ergonomic)"
+
+        # Slouching / bad posture detection
+        result.is_slouching = bool(eff_pitch < -16.0 and abs(eff_yaw) < 14.0)
 
         raw_left_ear = self._calc_ear(landmarks_2d, self.left_eye_indices)
         raw_right_ear = self._calc_ear(landmarks_2d, self.right_eye_indices)
@@ -668,7 +702,7 @@ class GazeDetector:
         result.is_yawning = is_yawn
         result.yawn_count = yawn_cnt
 
-        # 9. Focus Scoring & State Classifier
+        # 9. Focus Scoring & Multi-Modal Context-Aware State Classifier
         gaze_dist_sq = (result.total_gaze_yaw / 26.0) ** 2 + (result.total_gaze_pitch / 22.0) ** 2
         p_gaze = math.exp(-0.5 * min(10.0, gaze_dist_sq))
         p_eyes = 1.0 - max(0.0, min(1.0, (avg_blink - 0.25) / 0.65))
@@ -681,12 +715,32 @@ class GazeDetector:
 
         result.focus_confidence = self.focus_confidence
 
+        # Continuous Zero-Drift Posture Learning Anchor
+        if instant_score > 0.70 and self.focus_confidence > 0.85 and abs(eff_yaw) < 10.0 and abs(eff_pitch) < 10.0:
+            self.calibrated_yaw = 0.999 * self.calibrated_yaw + 0.001 * (-raw_yaw)
+            self.calibrated_pitch = 0.999 * self.calibrated_pitch + 0.001 * (-raw_pitch)
+
         reasons = []
+        is_desk_notes = (-24.0 <= eff_pitch <= -13.0 and abs(eff_yaw) < 16.0 and result.cognitive_load_pct >= 55)
         is_phone_down = (eff_pitch < -24.0 or (blend_dict.get("eyeLookDownLeft", 0.0) > 0.45 and blend_dict.get("eyeLookDownRight", 0.0) > 0.45))
         is_glancing = (abs(result.total_gaze_yaw) > self.head_yaw_thresh or abs(result.total_gaze_pitch) > self.head_pitch_thresh)
         is_eyes_closed = (avg_blink > 0.85) or (filtered_ear < self.ear_thresh)
+        is_deep_thinking = (is_glancing and result.cognitive_load_pct > 72 and (eff_pitch > 6.0 or abs(eff_yaw) < 32.0))
 
-        if is_phone_down and not is_eyes_closed:
+        if is_desk_notes and not is_eyes_closed and not is_phone_down:
+            if self._phone_down_start_time is None:
+                self._phone_down_start_time = now
+            desk_dur = now - self._phone_down_start_time
+            if desk_dur < 10.0:
+                result.smart_state = "THINKING_GLANCE"
+                result.status_label = "FOCUSING"
+                result.state_description = "Scriere / Notite la birou"
+            else:
+                result.smart_state = "PHONE_DOWN"
+                result.status_label = "PHONE_DOWN"
+                result.state_description = f"Privire coborata prelungita ({desk_dur:.0f}s)"
+                reasons.append("Atentie coborata")
+        elif is_phone_down and not is_eyes_closed:
             if self._phone_down_start_time is None:
                 self._phone_down_start_time = now
             phone_dur = now - self._phone_down_start_time
@@ -702,17 +756,33 @@ class GazeDetector:
         else:
             self._phone_down_start_time = None
 
-        if result.smart_state != "PHONE_DOWN":
+        if result.smart_state != "PHONE_DOWN" and result.smart_state != "THINKING_GLANCE":
             if self.focus_confidence > 0.45 and not is_eyes_closed:
                 result.smart_state = "FOCUS_ACTIVE"
                 result.status_label = "FOCUSING"
-                result.state_description = f"{result.expression_label} | {result.reading_state_label}"
+                if result.is_reading_active:
+                    result.state_description = f"Citire Activa Cod/Text | {result.expression_label}"
+                else:
+                    result.state_description = f"{result.expression_label} | {result.reading_state_label}"
                 self._glance_start_time = None
             elif is_eyes_closed:
                 result.smart_state = "LOOKING_AWAY"
                 result.status_label = "LOOKING_AWAY"
                 result.state_description = "Ochi inchisi"
                 reasons.append("Ochi inchisi")
+            elif is_deep_thinking:
+                if self._glance_start_time is None:
+                    self._glance_start_time = now
+                think_dur = now - self._glance_start_time
+                if think_dur < 6.5:
+                    result.smart_state = "THINKING_GLANCE"
+                    result.status_label = "FOCUSING"
+                    result.state_description = "Reflectie Profunda / Rezolvare Problema"
+                else:
+                    result.smart_state = "LOOKING_AWAY"
+                    result.status_label = "LOOKING_AWAY"
+                    result.state_description = "Privire distrasa in afara ecranului"
+                    reasons.append("Atentie abatuta")
             elif is_glancing:
                 if self._glance_start_time is None:
                     self._glance_start_time = now
