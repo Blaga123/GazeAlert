@@ -31,7 +31,10 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
 
+    - name: Download FaceLandmarker Task Model
+      run: |
+        python -c "import urllib.request; urllib.request.urlretrieve('https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task', 'face_landmarker.task')"
+
     - name: Run Full 8-Module System Test Suite
       run: |
         python test_system.py
-

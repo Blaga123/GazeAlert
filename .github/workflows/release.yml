@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   release:
@@ -22,7 +23,7 @@ jobs:
         python-version: '3.12'
         cache: 'pip'
 
-    - name: Install Dependencies & Tools
+    - name: Install Dependencies & Build Tools
       run: |
         python -m pip install --upgrade pip setuptools wheel
         pip install -r requirements.txt
@@ -32,13 +33,21 @@ jobs:
       run: |
         choco install innosetup -y
 
+    - name: Download FaceLandmarker Task Model
+      run: |
+        python -c "import urllib.request; urllib.request.urlretrieve('https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task', 'face_landmarker.task')"
+
     - name: Build Standalone Installer
+      env:
+        CI: "true"
+        GITHUB_ACTIONS: "true"
       shell: cmd
       run: |
-        build_installer.bat < nul
+        build_installer.bat
 
     - name: Create GitHub Release & Upload Installer
       uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         files: Output/GazeAlert_Setup_v2.0.exe
         name: GazeAlert AI Studio ${{ github.ref_name }}
@@ -51,7 +60,7 @@ jobs:
           ### 📦 Pachet de Instalare Automat (1-Click Installer):
           - **Fișier**: `GazeAlert_Setup_v2.0.exe` (~68 MB)
           - **Compatibilitate**: Windows 10 & Windows 11 (64-bit)
-          - **Zero Dependințe**: Nu necesită instalare de Python, C++ sau alte pachete manuale. Include tot mediul necesar gata de rulare.
+          - **Zero Dependințe**: Include Python runtime, C++ DLLs, modelul AI MediaPipe și toate dependențele gata de rulare.
 
           ---
 

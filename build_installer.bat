@@ -48,7 +48,10 @@ if exist "Output\GazeAlert_Setup_v2.0.exe" (
     echo ============================================================
 ) else (
     echo [!] Eroare la generarea installer-ului Inno Setup.
+    exit /b 1
 )
 
 echo.
-pause
+if "%CI%"=="" if "%GITHUB_ACTIONS%"=="" (
+    pause
+)
