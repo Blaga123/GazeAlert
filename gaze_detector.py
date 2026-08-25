@@ -536,15 +536,7 @@ class GazeDetector:
         detection_result = self.task_landmarker.detect(mp_img)
 
         if not detection_result.face_landmarks or len(detection_result.face_landmarks) == 0:
-            res = GazeResult()
-            res.face_detected = False
-            res.smart_state = "NO_FACE"
-            res.status_label = "NO_FACE"
-            res.state_description = "Fata nu este detectata in cadru"
-            res.reasons.append("Utilizator absent")
-            self.focus_confidence = max(0.0, self.focus_confidence - 0.15)
-            res.focus_confidence = self.focus_confidence
-            return res
+            return self._process_with_opencv(frame)
 
         result = GazeResult()
         result.face_detected = True
