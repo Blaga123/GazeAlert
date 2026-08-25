@@ -390,8 +390,8 @@ class UnifiedGazeApp:
         if not self.is_running:
             return
 
-        frame = self.camera.read()
-        if frame is not None and frame.size > 0:
+        ret, frame = self.camera.read()
+        if ret and frame is not None and frame.size > 0:
             # FPS Tracking
             self._fps_counter += 1
             now = time.time()
