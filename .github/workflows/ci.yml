@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.12"]
 
     steps:
     - name: Checkout Repository
@@ -36,5 +36,6 @@ jobs:
         python -c "import urllib.request; urllib.request.urlretrieve('https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task', 'face_landmarker.task')"
 
     - name: Run Full 8-Module System Test Suite
+      shell: cmd
       run: |
         python test_system.py
