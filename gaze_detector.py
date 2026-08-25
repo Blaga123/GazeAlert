@@ -755,11 +755,6 @@ class GazeDetector:
 
         result.focus_confidence = self.focus_confidence
 
-        # Continuous Zero-Drift Posture Learning Anchor
-        if instant_score > 0.70 and self.focus_confidence > 0.85 and abs(eff_yaw) < 10.0 and abs(eff_pitch) < 10.0:
-            self.calibrated_yaw = 0.999 * self.calibrated_yaw + 0.001 * (-raw_yaw)
-            self.calibrated_pitch = 0.999 * self.calibrated_pitch + 0.001 * (-raw_pitch)
-
         reasons = []
         is_desk_notes = (-24.0 <= eff_pitch <= -13.0 and abs(eff_yaw) < 16.0 and result.cognitive_load_pct >= 55)
         is_phone_down = (eff_pitch < -24.0 or (blend_dict.get("eyeLookDownLeft", 0.0) > 0.45 and blend_dict.get("eyeLookDownRight", 0.0) > 0.45))
@@ -899,6 +894,21 @@ class GazeDetector:
                 return res
 
         return self._process_with_opencv(frame)
+
+    def calibrate_baseline(self, current_yaw: float = 0.0, current_pitch: float = 0.0, ipd: float = 65.0):
+        """Instantly anchors current head posture and gaze to (0.0 deg, 0.0 deg)."""
+        self.calibrated_yaw = float(current_yaw)
+        self.calibrated_pitch = float(current_pitch)
+        self.baseline_ipd = max(20.0, float(ipd))
+        self._auto_calib_samples = self._auto_calib_max_samples
+        print(f"[+] Baseline calibrat: Yaw {self.calibrated_yaw:+.1f} deg, Pitch {self.calibrated_pitch:+.1f} deg, IPD {self.baseline_ipd:.1f}px")
+
+    def reset_calibration(self):
+        """Resets baseline anchor back to factory default."""
+        self.calibrated_yaw = 0.0
+        self.calibrated_pitch = 0.0
+        self.baseline_ipd = 65.0
+        self._auto_calib_samples = 0
 
     def close(self):
         if self.task_landmarker is not None:
