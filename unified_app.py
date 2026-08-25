@@ -2,6 +2,7 @@
 GazeAlert Unified Studio App.
 Integrates the Real-Time AI Camera Feed, Interactive Controls, and
 Comprehensive Medical-Grade Eye, Pupil & Biometric Telemetry Tables in a Single Window.
+Optimized for 30+ FPS smooth rendering with zero layout shifting and intuitive UX.
 """
 
 import json
@@ -70,7 +71,14 @@ class UnifiedGazeApp:
         self.fps = 30.0
         self._fps_counter = 0
         self._fps_time = time.time()
+        self._last_ui_update = 0.0
         self.is_running = True
+
+        # Cached canvas dimensions for zero-lag rendering
+        self._target_w = 760
+        self._target_h = 428
+        self._offset_x = 0
+        self._offset_y = 0
 
         # Camera
         webcam_id = int(self.config.get("webcam_id", 0))
@@ -127,8 +135,8 @@ class UnifiedGazeApp:
     def _init_window(self):
         self.root = tk.Tk()
         self.root.title("GazeAlert Studio • AI Eye Tracking & Productivity Suite")
-        self.root.geometry("1280x740")
-        self.root.minsize(1100, 650)
+        self.root.geometry("1280x750")
+        self.root.minsize(1080, 640)
         self.root.configure(bg="#070a0f")
 
         try:
@@ -157,11 +165,22 @@ class UnifiedGazeApp:
 
         tk.Label(
             title_frame,
-            text="  |  Medical-Grade Eye Tracking & Cognitive Telemetry",
+            text="  |  Medical-Grade Eye Tracking & Cognitive Suite",
             font=("Segoe UI", 9),
             fg="#64748b",
             bg="#0d131f"
         ).pack(side="left")
+
+        # Notification Toast Pill (in top bar)
+        self.lbl_toast = tk.Label(
+            top_bar,
+            text="",
+            font=("Segoe UI", 9, "bold"),
+            fg="#38bdf8",
+            bg="#0d131f",
+            padx=8
+        )
+        self.lbl_toast.pack(side="left", padx=20)
 
         self.lbl_fps_badge = tk.Label(
             top_bar,
@@ -179,20 +198,21 @@ class UnifiedGazeApp:
         content_frame = tk.Frame(self.root, bg="#070a0f", padx=12, pady=10)
         content_frame.pack(fill="both", expand=True)
 
-        content_frame.grid_columnconfigure(0, weight=1)              # Left Video Feed fills remaining space
-        content_frame.grid_columnconfigure(1, weight=0, minsize=420) # Right Sidebar fixed width
+        content_frame.grid_columnconfigure(0, weight=1)              # Left Video Feed
+        content_frame.grid_columnconfigure(1, weight=0, minsize=425) # Right Sidebar fixed width
         content_frame.grid_rowconfigure(0, weight=1)
 
         # Left Column: Video Feed Canvas Frame
         self.video_box = tk.Frame(content_frame, bg="#000000", highlightthickness=1, highlightbackground="#1e293b")
         self.video_box.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self.video_box.bind("<Configure>", self._on_canvas_resize)
 
         self.video_canvas = tk.Canvas(self.video_box, bg="#000000", highlightthickness=0)
         self.video_canvas.pack(fill="both", expand=True)
         self.canvas_img_id = self.video_canvas.create_image(0, 0, anchor="nw")
 
-        # Right Column: Studio Control Hub (Strictly fixed width)
-        sidebar = tk.Frame(content_frame, bg="#0d131f", width=420, highlightthickness=1, highlightbackground="#1e293b")
+        # Right Column: Studio Control Hub
+        sidebar = tk.Frame(content_frame, bg="#0d131f", width=425, highlightthickness=1, highlightbackground="#1e293b")
         sidebar.grid(row=0, column=1, sticky="nsew")
         sidebar.grid_propagate(False)
         sidebar.pack_propagate(False)
@@ -211,20 +231,41 @@ class UnifiedGazeApp:
         tab_telemetry = tk.Frame(notebook, bg="#0d131f", padx=10, pady=10)
         tab_settings = tk.Frame(notebook, bg="#0d131f", padx=10, pady=10)
 
-        notebook.add(tab_live, text="📊 Monitor & Studiu")
-        notebook.add(tab_telemetry, text="👁️ Telemetrie Ochi")
+        notebook.add(tab_live, text="📊 Tablou Principal")
+        notebook.add(tab_telemetry, text="🔬 Telemetrie Detaliată")
         notebook.add(tab_settings, text="⚙️ Setări & Praguri")
 
         self._build_sidebar_live(tab_live)
         self._build_sidebar_telemetry(tab_telemetry)
         self._build_sidebar_settings(tab_settings)
 
+    def _on_canvas_resize(self, event):
+        """Pre-calculates aspect ratio fitting only when window dimensions change."""
+        box_w = max(100, event.width)
+        box_h = max(100, event.height)
+        aspect = 16.0 / 9.0
+
+        if box_w / box_h > aspect:
+            self._target_h = box_h
+            self._target_w = int(box_h * aspect)
+        else:
+            self._target_w = box_w
+            self._target_h = int(box_w / aspect)
+
+        self._offset_x = max(0, (box_w - self._target_w) // 2)
+        self._offset_y = max(0, (box_h - self._target_h) // 2)
+
+    def _show_toast(self, message: str, duration_sec: float = 2.5):
+        """Displays temporary user-friendly status banner in the top bar."""
+        self.lbl_toast.configure(text=message)
+        self.root.after(int(duration_sec * 1000), lambda: self.lbl_toast.configure(text=""))
+
     def _build_sidebar_live(self, parent: tk.Frame):
-        # Card: Focus Score & Pomodoro
+        # Card 1: Focus Score, Flow & Pomodoro
         card_focus = tk.Frame(parent, bg="#131d31", padx=12, pady=10, highlightthickness=1, highlightbackground="#1e293b")
         card_focus.pack(fill="x", pady=(0, 6))
 
-        tk.Label(card_focus, text="SCOR CONCENTRARE", font=("Segoe UI", 8, "bold"), fg="#38bdf8", bg="#131d31").pack(anchor="w")
+        tk.Label(card_focus, text="STARE DE CONCENTRARE & POMODORO", font=("Segoe UI", 8, "bold"), fg="#38bdf8", bg="#131d31").pack(anchor="w")
 
         row1 = tk.Frame(card_focus, bg="#131d31")
         row1.pack(fill="x", pady=4)
@@ -244,7 +285,20 @@ class UnifiedGazeApp:
         self.lbl_flow_zone = tk.Label(info_box, text="Flow: 🟢 DEEP FLOW (Optimal)", font=("Segoe UI", 8, "bold"), fg="#00FF78", bg="#131d31")
         self.lbl_flow_zone.pack(anchor="w")
 
-        # Card: Level & XP Gamification
+        # Card 2: Ergonomics & Quick Eye Overview
+        card_ergo = tk.Frame(parent, bg="#131d31", padx=12, pady=8, highlightthickness=1, highlightbackground="#1e293b")
+        card_ergo.pack(fill="x", pady=(0, 6))
+
+        row_ergo = tk.Frame(card_ergo, bg="#131d31")
+        row_ergo.pack(fill="x")
+
+        self.lbl_posture = tk.Label(row_ergo, text="📏 Distanță: 52 cm (Optim)", font=("Segoe UI", 9, "bold"), fg="#38bdf8", bg="#131d31")
+        self.lbl_posture.pack(side="left")
+
+        self.lbl_ear_quick = tk.Label(row_ergo, text="👁️ Ochi: DESCHIȘI", font=("Segoe UI", 8), fg="#00FF78", bg="#131d31")
+        self.lbl_ear_quick.pack(side="right")
+
+        # Card 3: Level & XP Gamification
         card_xp = tk.Frame(parent, bg="#131d31", padx=12, pady=8, highlightthickness=1, highlightbackground="#1e293b")
         card_xp.pack(fill="x", pady=(0, 6))
 
@@ -294,27 +348,31 @@ class UnifiedGazeApp:
         self.btn_monk = make_btn("🛡️ Monk Mode: OFF", self._do_toggle_monk, color="#1e293b")
         self.btn_monk.grid(row=1, column=1, padx=2, pady=2, sticky="nsew")
 
-        self.btn_sound = make_btn("🔔 Sunet: ON", self._do_toggle_sound, color="#1e293b")
+        self.btn_sound = make_btn("🔔 Sunet Alerte: ON", self._do_toggle_sound, color="#1e293b")
         self.btn_sound.grid(row=2, column=0, padx=2, pady=2, sticky="nsew")
 
-        b6 = make_btn("📊 Raport & Heatmap", self._do_open_report, color="#d97706")
-        b6.grid(row=2, column=1, padx=2, pady=2, sticky="nsew")
+        self.btn_mesh = make_btn("🎭 Plasă & Raze: ON", self._do_toggle_mesh, color="#1e293b")
+        self.btn_mesh.grid(row=2, column=1, padx=2, pady=2, sticky="nsew")
+
+        b7 = make_btn("📊 Vezi Raport & Heatmap", self._do_open_report, color="#d97706")
+        b7.grid(row=3, column=0, columnspan=2, padx=2, pady=2, sticky="nsew")
 
         btn_grid.columnconfigure(0, weight=1)
         btn_grid.columnconfigure(1, weight=1)
 
     def _build_sidebar_telemetry(self, parent: tk.Frame):
-        """Builds comprehensive eye, pupil, and head pose telemetry cards."""
+        """Builds structured eye, pupil, and head pose telemetry cards with clear explanations."""
         # Telemetry Card 1: Eye & Pupil Metrics
         card_eyes = tk.Frame(parent, bg="#131d31", padx=12, pady=10, highlightthickness=1, highlightbackground="#1e293b")
         card_eyes.pack(fill="x", pady=(0, 8))
 
         tk.Label(card_eyes, text="BIOMETRIE OCHI & PUPILLOMETRIE", font=("Segoe UI", 9, "bold"), fg="#38bdf8", bg="#131d31").pack(anchor="w", pady=(0, 6))
 
-        def add_row(parent_card, label_text):
+        def add_row(parent_card, label_text, tooltip_hint=""):
             r = tk.Frame(parent_card, bg="#131d31")
             r.pack(fill="x", pady=2)
-            tk.Label(r, text=label_text, font=("Segoe UI", 8), fg="#94a3b8", bg="#131d31").pack(side="left")
+            lbl = tk.Label(r, text=label_text, font=("Segoe UI", 8), fg="#94a3b8", bg="#131d31")
+            lbl.pack(side="left")
             val_lbl = tk.Label(r, text="--", font=("Segoe UI", 8, "bold"), fg="#ffffff", bg="#131d31")
             val_lbl.pack(side="right")
             return val_lbl
@@ -362,6 +420,22 @@ class UnifiedGazeApp:
         self.scale_pomo.set(float(self.config.get("pomodoro_focus_minutes", 25.0)))
         self.scale_pomo.pack(fill="x", pady=1)
 
+        # Action Button: Test Alert Sound
+        btn_test_snd = tk.Button(
+            card,
+            text="🔊 Testează Sunet Alerte",
+            command=self.alert_mgr.trigger_test_alert,
+            font=("Segoe UI", 8),
+            bg="#1e293b",
+            fg="#cbd5e1",
+            activebackground="#334155",
+            relief="flat",
+            padx=10,
+            pady=6,
+            cursor="hand2"
+        )
+        btn_test_snd.pack(fill="x", pady=(8, 4))
+
         # Save Button
         btn_save = tk.Button(
             card,
@@ -376,7 +450,7 @@ class UnifiedGazeApp:
             pady=7,
             cursor="hand2"
         )
-        btn_save.pack(fill="x", pady=10)
+        btn_save.pack(fill="x", pady=8)
 
     def _do_calib_center(self):
         if hasattr(self, 'current_gaze') and self.current_gaze.face_detected:
@@ -388,12 +462,15 @@ class UnifiedGazeApp:
             )
             self.away_start_time = None
             self.away_elapsed = 0.0
+            self._show_toast("✓ Centru calibrat la (0.0°, 0.0°)")
 
     def _do_calib_9point(self):
         self.calibrator.start_calibration()
+        self._show_toast("📐 Calibrare 9 puncte inițiată (privește spre ținte)")
 
     def _do_toggle_pomo(self):
-        self.study_mgr.toggle_pomodoro()
+        active = self.study_mgr.toggle_pomodoro()
+        self._show_toast(f"⏱️ Pomodoro: {'PORNIT' if active else 'PAUZĂ'}")
 
     def _do_toggle_monk(self):
         self.monk_mode_enabled = not self.monk_mode_enabled
@@ -401,6 +478,7 @@ class UnifiedGazeApp:
             text=f"🛡️ Monk Mode: {'ON' if self.monk_mode_enabled else 'OFF'}",
             bg="#b91c1c" if self.monk_mode_enabled else "#1e293b"
         )
+        self._show_toast(f"🛡️ Monk Mode: {'ACTIVAT' if self.monk_mode_enabled else 'DEZACTIVAT'}")
 
     def _do_toggle_sound(self):
         active = self.alert_mgr.toggle_sound()
@@ -408,11 +486,21 @@ class UnifiedGazeApp:
             text=f"🔔 Sunet: {'ON' if active else 'OFF'}",
             bg="#059669" if active else "#1e293b"
         )
+        self._show_toast(f"🔔 Sunet alerte: {'ACTIVAT' if active else 'OPRIT'}")
+
+    def _do_toggle_mesh(self):
+        self.show_mesh = not self.show_mesh
+        self.btn_mesh.configure(
+            text=f"🎭 Plasă & Raze: {'ON' if self.show_mesh else 'OFF'}",
+            bg="#059669" if self.show_mesh else "#1e293b"
+        )
+        self._show_toast(f"🎭 Afișare plasă: {'ACTIVATĂ' if self.show_mesh else 'ASCUNSĂ'}")
 
     def _do_open_report(self):
         p = self.study_mgr.generate_html_report("study_report.html")
         if p:
             webbrowser.open(p)
+            self._show_toast("📊 Raport & Heatmap deschise în browser")
 
     def _do_save_settings(self):
         self.config["head_yaw_threshold"] = float(self.scale_yaw.get())
@@ -422,7 +510,7 @@ class UnifiedGazeApp:
         self.alert_mgr.away_delay_sec = float(self.scale_delay.get())
         self.study_mgr.focus_duration_sec = float(self.scale_pomo.get()) * 60.0
         self._save_config()
-        messagebox.showinfo("GazeAlert Studio", "Setările au fost salvate cu succes!")
+        self._show_toast("💾 Preferințele au fost salvate!")
 
     def start_loop(self):
         """Main update loop."""
@@ -435,9 +523,8 @@ class UnifiedGazeApp:
 
         ret, frame = self.camera.read()
         if ret and frame is not None and frame.size > 0:
-            # FPS Tracking
-            self._fps_counter += 1
             now = time.time()
+            self._fps_counter += 1
             if now - self._fps_time >= 1.0:
                 self.fps = self._fps_counter / (now - self._fps_time)
                 self._fps_counter = 0
@@ -504,15 +591,15 @@ class UnifiedGazeApp:
                     is_focused=gaze.is_looking_at_screen
                 )
 
-            # Top HUD Status Banner
+            # Top HUD Status Banner on Video
             badge_color = (0, 255, 120) if gaze.is_looking_at_screen else (0, 60, 255)
             badge_text = f"FOCUS ({int(gaze.focus_confidence * 100)}%)" if gaze.is_looking_at_screen else f"PRIVIRE IN ALTA PARTE ({self.away_elapsed:.1f}s)"
-            cv2.rectangle(frame, (10, 10), (w - 10, 48), (15, 20, 28), -1)
-            cv2.rectangle(frame, (10, 10), (w - 10, 48), badge_color, 1)
-            cv2.putText(frame, badge_text, (20, 36), cv2.FONT_HERSHEY_DUPLEX, 0.65, badge_color, 2, cv2.LINE_AA)
+            cv2.rectangle(frame, (10, 10), (w - 10, 46), (15, 20, 28), -1)
+            cv2.rectangle(frame, (10, 10), (w - 10, 46), badge_color, 1)
+            cv2.putText(frame, badge_text, (20, 34), cv2.FONT_HERSHEY_DUPLEX, 0.65, badge_color, 2, cv2.LINE_AA)
 
             # Bottom Left Camera Diagnostic Overlay
-            cv2.putText(frame, f"Yaw: {gaze.head_yaw:+.1f} Pitch: {gaze.head_pitch:+.1f} | Dist: {int(gaze.distance_cm)}cm | {gaze.flow_state_zone[:20]}", (20, h - 16), cv2.FONT_HERSHEY_SIMPLEX, 0.42 * scale, (0, 255, 180), 1, cv2.LINE_AA)
+            cv2.putText(frame, f"Yaw: {gaze.head_yaw:+.1f} Pitch: {gaze.head_pitch:+.1f} | Dist: {int(gaze.distance_cm)}cm | {gaze.flow_state_zone[:18]}", (18, h - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.40 * scale, (0, 255, 180), 1, cv2.LINE_AA)
 
             # Monk Mode Distraction Shield
             if self.monk_mode_enabled and self.away_elapsed > 2.0:
@@ -522,58 +609,48 @@ class UnifiedGazeApp:
                 cv2.rectangle(frame, (8, 8), (w - 8, h - 8), (0, 0, 255), 4)
                 cv2.putText(frame, "MONK MODE: ATENTIE LA ECRAN!", (int(w * 0.18), int(h * 0.52)), cv2.FONT_HERSHEY_DUPLEX, 0.70, (0, 140, 255), 2, cv2.LINE_AA)
 
-            # Fit 16:9 Aspect Ratio inside Left Box without pushing layout
-            box_w = max(100, self.video_box.winfo_width())
-            box_h = max(100, self.video_box.winfo_height())
-            aspect = 16.0 / 9.0
-
-            if box_w / box_h > aspect:
-                target_h = box_h
-                target_w = int(box_h * aspect)
-            else:
-                target_w = box_w
-                target_h = int(box_w / aspect)
-
-            offset_x = max(0, (box_w - target_w) // 2)
-            offset_y = max(0, (box_h - target_h) // 2)
-
-            resized = cv2.resize(frame, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+            # Fast Aspect-Ratio Fit without UI lag
+            resized = cv2.resize(frame, (self._target_w, self._target_h), interpolation=cv2.INTER_LINEAR)
             rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(rgb)
             imgtk = ImageTk.PhotoImage(image=img)
             self.video_canvas.imgtk = imgtk
-            self.video_canvas.coords(self.canvas_img_id, offset_x, offset_y)
+            self.video_canvas.coords(self.canvas_img_id, self._offset_x, self._offset_y)
             self.video_canvas.itemconfig(self.canvas_img_id, image=imgtk)
 
-            # Update Right Sidebar Tab 1 (Live Performance)
-            eff = self.study_mgr.get_efficiency_score()
-            lvl, cur_xp, needed_xp, ratio = self.study_mgr.get_level_info()
-            col = "#00FF78" if gaze.is_looking_at_screen else "#FF3250"
-            self.lbl_focus_pct.configure(text=f"{eff}%", fg=col)
-            self.lbl_state.configure(text=f"Stare: {gaze.expression_label if gaze.face_detected else 'ABSENT'}")
-            self.lbl_pomo.configure(text=f"Pomodoro: {self.study_mgr.get_pomodoro_string()}")
-            self.lbl_flow_zone.configure(text=f"Flow: {gaze.flow_state_zone[:24]}")
-            self.lbl_level.configure(text=f"🏆 Nivel {lvl} • {self.study_mgr.total_xp} XP")
-            self.lbl_xp_txt.configure(text=f"{cur_xp} / {needed_xp} XP")
-            self.progress_xp["value"] = ratio * 100.0
+            # Throttle UI text telemetry updates to 10 FPS to save CPU for maximum fluid video
+            if now - self._last_ui_update >= 0.10:
+                self._last_ui_update = now
+                eff = self.study_mgr.get_efficiency_score()
+                lvl, cur_xp, needed_xp, ratio = self.study_mgr.get_level_info()
+                col = "#00FF78" if gaze.is_looking_at_screen else "#FF3250"
+                self.lbl_focus_pct.configure(text=f"{eff}%", fg=col)
+                self.lbl_state.configure(text=f"Stare: {gaze.expression_label if gaze.face_detected else 'ABSENT'}")
+                self.lbl_pomo.configure(text=f"Pomodoro: {self.study_mgr.get_pomodoro_string()}")
+                self.lbl_flow_zone.configure(text=f"Flow: {gaze.flow_state_zone[:24]}")
+                self.lbl_level.configure(text=f"🏆 Nivel {lvl} • {self.study_mgr.total_xp} XP")
+                self.lbl_xp_txt.configure(text=f"{cur_xp} / {needed_xp} XP")
+                self.progress_xp["value"] = ratio * 100.0
 
-            # Update Right Sidebar Tab 2 (Rich Eye & Biometric Telemetry Tables)
-            if gaze.face_detected:
-                ear_val = (gaze.left_ear + gaze.right_ear) / 2.0
-                ear_status = "DESCHISI" if ear_val >= self.detector.ear_thresh else "INCHISI"
-                self.val_ear.configure(text=f"{gaze.left_ear:.2f} L / {gaze.right_ear:.2f} R [{ear_status}]", fg="#00FF78" if ear_status == "DESCHISI" else "#FFC800")
-                self.val_perclos.configure(text=f"{int(gaze.perclos_score * 100)}% (PERCLOS Oboseală)", fg="#00FF78" if gaze.perclos_score < 0.15 else "#FF3250")
-                self.val_pupil.configure(text=f"{int(gaze.pupil_diameter_ratio * 100)}% ({gaze.pupil_state_label})", fg="#38bdf8")
-                self.val_cog.configure(text=f"{gaze.cognitive_load_pct}% (Efort Mental)", fg="#fbbf24")
-                self.val_reading.configure(text=f"{gaze.reading_state_label}", fg="#a78bfa")
-                self.val_lux.configure(text=f"{int(gaze.ambient_lux)} Lux (PLR Compensat)", fg="#e2e8f0")
-
-                self.val_yaw_pitch.configure(text=f"Yaw: {gaze.head_yaw:+.1f}° | Pitch: {gaze.head_pitch:+.1f}°")
-                self.val_vor.configure(text=f"Yaw: {gaze.total_gaze_yaw:+.1f}° | Pitch: {gaze.total_gaze_pitch:+.1f}°")
                 dist_col = "#00FF78" if 45 <= gaze.distance_cm <= 80 else "#FFC800"
-                self.val_dist.configure(text=f"{int(gaze.distance_cm)} cm", fg=dist_col)
-                self.val_posture.configure(text=f"{gaze.posture_status}", fg=dist_col)
-                self.val_expr.configure(text=f"{gaze.expression_label} {gaze.expression_emoji}")
+                self.lbl_posture.configure(text=f"📏 Distanță: {int(gaze.distance_cm)} cm ({gaze.posture_status})", fg=dist_col)
+
+                if gaze.face_detected:
+                    ear_val = (gaze.left_ear + gaze.right_ear) / 2.0
+                    ear_status = "DESCHIȘI" if ear_val >= self.detector.ear_thresh else "ÎNCHIȘI"
+                    self.lbl_ear_quick.configure(text=f"👁️ Ochi: {ear_status}", fg="#00FF78" if ear_status == "DESCHIȘI" else "#FFC800")
+                    self.val_ear.configure(text=f"{gaze.left_ear:.2f} L / {gaze.right_ear:.2f} R [{ear_status}]", fg="#00FF78" if ear_status == "DESCHIȘI" else "#FFC800")
+                    self.val_perclos.configure(text=f"{int(gaze.perclos_score * 100)}% (PERCLOS Oboseală)", fg="#00FF78" if gaze.perclos_score < 0.15 else "#FF3250")
+                    self.val_pupil.configure(text=f"{int(gaze.pupil_diameter_ratio * 100)}% ({gaze.pupil_state_label})", fg="#38bdf8")
+                    self.val_cog.configure(text=f"{gaze.cognitive_load_pct}% (Efort Mental)", fg="#fbbf24")
+                    self.val_reading.configure(text=f"{gaze.reading_state_label}", fg="#a78bfa")
+                    self.val_lux.configure(text=f"{int(gaze.ambient_lux)} Lux (PLR Compensat)", fg="#e2e8f0")
+
+                    self.val_yaw_pitch.configure(text=f"Yaw: {gaze.head_yaw:+.1f}° | Pitch: {gaze.head_pitch:+.1f}°")
+                    self.val_vor.configure(text=f"Yaw: {gaze.total_gaze_yaw:+.1f}° | Pitch: {gaze.total_gaze_pitch:+.1f}°")
+                    self.val_dist.configure(text=f"{int(gaze.distance_cm)} cm", fg=dist_col)
+                    self.val_posture.configure(text=f"{gaze.posture_status}", fg=dist_col)
+                    self.val_expr.configure(text=f"{gaze.expression_label} {gaze.expression_emoji}")
 
         # Schedule next frame (30 FPS -> ~25ms)
         self.root.after(25, self._update_frame)
