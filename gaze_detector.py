@@ -104,8 +104,8 @@ class GazeDetector:
     """Ultra-High Precision Eye & Gaze Tracking Engine with Anatomical Angle Kappa & Daugman Operator."""
     def __init__(
         self,
-        head_yaw_thresh: float = 38.0,
-        head_pitch_thresh: float = 32.0,
+        head_yaw_thresh: float = 18.0,
+        head_pitch_thresh: float = 16.0,
         ear_thresh: float = 0.12,
         iris_min: float = 0.20,
         iris_max: float = 0.80,

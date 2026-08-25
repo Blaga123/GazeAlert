@@ -41,11 +41,11 @@ class AlertManager:
         frequency: int = 1200,
         duration_ms: int = 300,
         repeat_interval_sec: float = 3.0,
-        nudge_delay_sec: float = 4.5,          # Seconds of distraction before soft nudge
-        warn_delay_sec: float = 12.0,          # Seconds before polite warning
-        away_delay_sec: float = 25.0,          # Seconds before full away alert
-        cooldown_sec: float = 12.0,            # Anti-spam cooldown between sounds
-        toast_cooldown_sec: float = 35.0,      # Anti-spam cooldown between desktop toasts
+        nudge_delay_sec: float = 2.0,          # Seconds of distraction before soft nudge
+        warn_delay_sec: float = 4.0,           # Seconds before polite warning
+        away_delay_sec: float = 6.0,           # Seconds before full away alert
+        cooldown_sec: float = 4.0,             # Anti-spam cooldown between sounds
+        toast_cooldown_sec: float = 15.0,      # Anti-spam cooldown between desktop toasts
         **kwargs
     ):
         self.enable_sound = enable_sound
