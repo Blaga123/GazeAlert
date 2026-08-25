@@ -1,130 +1,207 @@
 <div align="center">
 
-# 👁️ GazeAlert AI Suite
-### *Medical-Grade Real-Time Eye Tracking, Cognitive Load Analyzer & Autonomous Study Coach*
+# ⚡ GazeAlert AI Studio
+### *Medical-Grade Real-Time Eye Tracking, Cognitive Load Estimation & Autonomous Deep Work Suite*
 
-[![Python](https://img.shields.io/badge/Python-3.10%20--%203.14-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![GitHub CI/CD](https://github.com/Blaga123/GazeAlert/actions/workflows/ci.yml/badge.svg)](https://github.com/Blaga123/GazeAlert/actions)
+[![Python Version](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.14-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![OpenCV](https://img.shields.io/badge/OpenCV-Accelerated-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)](https://opencv.org)
-[![MediaPipe](https://img.shields.io/badge/Google%20MediaPipe-Face%20Landmarker-0097A7?style=for-the-badge&logo=google&logoColor=white)](https://developers.google.com/mediapipe)
-[![Hardware Acceleration](https://img.shields.io/badge/AMD%20OpenCL-RDNA%202%20%2F%20DirectShow-ED1C24?style=for-the-badge&logo=amd&logoColor=white)](https://www.amd.com)
+[![Google MediaPipe](https://img.shields.io/badge/Google%20MediaPipe-Face%20Landmarker-0097A7?style=for-the-badge&logo=google&logoColor=white)](https://developers.google.com/mediapipe)
+[![Hardware Acceleration](https://img.shields.io/badge/AMD%20OpenCL-DirectShow%20Pipeline-ED1C24?style=for-the-badge&logo=amd&logoColor=white)](https://www.amd.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 <br/>
 
-**GazeAlert AI** este o suită software avansată pentru monitorizarea atenției, postura capului și ritmul de învățare/muncă la calculator. Folosește algoritmi de precizie sub-pixelică (Daugman Radial Operator) și corecție anatomică a axei foveale (**Unghiul Kappa $\kappa = 4.2^\circ$**) pentru a transforma orice cameră web obișnuită într-un eye-tracker de nivel profesional.
+<p align="center">
+  <b>GazeAlert AI</b> transforms any standard RGB webcam into a <b>high-precision medical-grade eye tracker</b> and <b>autonomous cognitive ergonomics coach</b>.
+  Built on sub-pixel integro-differential gradient operators, anatomical foveal kappa compensation, and real-time Yerkes-Dodson cognitive flow modeling.
+</p>
+
+[✨ Key Features](#-key-features) •
+[🖥️ Studio Architecture](#️-all-in-one-studio-architecture) •
+[🔬 Scientific Core](#-scientific--mathematical-foundations) •
+[⌨️ Hotkeys](#️-keyboard-hotkeys-reference) •
+[🚀 Quickstart](#-quickstart--installation) •
+[🤝 Contributing](#-contributing)
 
 </div>
 
 ---
 
-## 🌟 Caracteristici Principale (Key Features)
+## 🌟 Key Features
 
-### 🔬 1. Optică & Fuziune Neuronală Medical-Grade
-* **Daugman Integro-Differential Operator**: Rafinament la rezoluție de **0.05 pixeli** a marginii irisului și pupilei.
-* **Corecția Anatomică Unghi Kappa ($\kappa = 4.2^\circ$)**: Corectează deviația naturală dintre axa optică a ochiului și linia vizuală foveală.
-* **Pupillometrie & Efort Mental**: Măsurarea diametrului pupilar raportat la iris (30–42%) pentru estimarea în timp real a efortului cognitiv (**Cognitive Load %**).
-* **Ritm de Lectură & Saccade**: Diferențiere automată între lectură normală, fixație stabilă și oboseală oculară (PERCLOS).
-* **Filtru 1-Euro 1D & 2D**: Elimină tremurul camerei fără a introduce latență sau lag perceptibil.
-
-### 👑 2. Interfață Studio All-in-One & Moduri Vizuale
-* **🖥️ All-in-One Unified Studio Window**: O singură fereastră modernă (1280x750) combinând stream-ul HD al camerei în stânga și Panoul de Control Studio cu telemetrie completă în dreapta.
-* **🛡️ Monk Mode (Scut Distrageri)**: Vignetare și alertă vizuală pe tot ecranul la distragerea atenției.
-* **📊 Harta Termică a Privirii (2D Heatmap)**: Render radial termic în HTML5 Canvas pe ecran în `study_report.html`.
-* **🔲 Mini-Widget OpenCV & Floating Pill Widget**: Widget plutitor fără margini, transparent (92% opacity), cu suport **Drag-and-Drop** oriunde pe ecran.
-* **🛡️ Minimize to System Tray (Lângă Ceas)**: Ascundere completă în bara de activități cu meniu de click-dreapta (`pystray`) și funcționare silențioasă în fundal.
-
-### 🧠 3. Coach de Studiu Pomodoro & Statistici
-* **Auto-Pause Inteligent**: Cronometrul de studiu se oprește automat dacă utilizatorul se uită la telefon sau pleacă de la birou.
-* **Regula 20-20-20**: Memento la fiecare 20 de minute pentru relaxarea ochilor și prevenirea sindromului de ochi uscat.
-* **Istoric SQLite & Export CSV/JSON**: Salvează automat fiecare sesiune în `study_history.db`, `study_sessions.csv` și `study_sessions.json`.
-* **Raport Grafic HTML Interactiv (`study_report.html`)**: Generat automat cu grafice Chart.js (Donut Chart & Scor de Eficiență $A^+$).
-
-### 🔔 4. Alerte Inteligente Anti-Spam & Sunete WAV
-* **Sistem Progresiv în 3 Trepte**:
-  1. *Chime Armonic Subtil* (la 4.5s) $\rightarrow$ C5/E5 acord muzical.
-  2. *Reminder Politicos* (la 12s) $\rightarrow$ Sunet de atenționare.
-  3. *Alertă Away* (la 25s) $\rightarrow$ Notificare nativă Windows Toast (`Win10Toast`).
-* **Sintetizator Audio WAV Încorporat**: Fără dependențe externe greoaie, redare asincronă cu 0 ms lag prin Windows Multimedia.
-
----
-
-## ⌨️ Scurtături Globale de Windows (Global Hotkeys)
-
-> [!TIP]
-> Scurtăturile funcționează **de oriunde din Windows**, chiar și când scrii cod în VS Code sau citești un PDF în browser!
-
-| Scurtătură Globală | Tastă Fereastră | Acțiune |
-|:---|:---:|:---|
-| **`Ctrl + Alt + C`** | **`C`** | **Calibrare Rapidă Centru** (re-centrează la postura ta curentă) |
-| **`Ctrl + Alt + W`** | **`W`** | **Comutare Mini-Widget / Fereastră Mare** |
-| **`Ctrl + Alt + G`** | **`G`** | **Activează / Ascunde Widgetul Plutitor Frameless (Pill)** |
-| **`Ctrl + Alt + H`** | **`H`** | **Minimizează în System Tray (Lângă Ceas)** |
-| **`Ctrl + Alt + P`** | **`P`** | **Pornire / Pauză Pomodoro (25 / 5 min)** |
-| **`Ctrl + Alt + S`** | **`S`** | **Sunet Alerte ON / OFF** |
-| — | **`O`** | **Schimbă Tema Culori** (*Cyber Dark, Nord, Amber, Light*) |
-| — | **`E`** | **Exportă Datele în CSV și JSON** |
-| — | **`K`** | **Calibrare în 9 Puncte pe Ecran** |
-| — | **`Q`** | **Ieșire & Deschide Raportul HTML de Studiu** |
+<table>
+  <tr>
+    <td width="50%">
+      <h3>🔬 Sub-Pixel Pupillometry</h3>
+      <p><b>0.05-pixel precision</b> Daugman integro-differential radial gradient operator with screen luminance compensation (PLR) for accurate cognitive load indexing.</p>
+    </td>
+    <td width="50%">
+      <h3>📐 Foveal Angle Kappa ($\kappa = 4.2^\circ$)</h3>
+      <p>Corrects natural anatomical misalignment between the optical axis and visual fovea, ensuring true screen gaze tracking across varied head orientations.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h3>🧠 Yerkes-Dodson Cognitive Flow</h3>
+      <p>Real-time mental engagement classification (Under-arousal, Deep Flow, Fatigue Overload) with automated +5 min Pomodoro deep flow extensions.</p>
+    </td>
+    <td width="50%">
+      <h3>🛡️ Monk Mode & Distraction Shield</h3>
+      <p>Full-screen peripheral vignette with instant visual alert upon head yaw exceeding threshold ($\pm 18^\circ$) to eliminate desk & phone distractions.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h3>📊 2D Screen Gaze Heatmap</h3>
+      <p>Real-time fixation point density recording with HTML5 Canvas thermal radial rendering and interactive Chart.js session analytics.</p>
+    </td>
+    <td width="50%">
+      <h3>📏 Ergonomics & 20-20-20 Rule</h3>
+      <p>Optical distance estimation in centimeters ($50-70\text{ cm}$ optimal), slouching detection, and automated dry-eye strain prevention breaks.</p>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## 🚀 Instalare și Rulare
+## 🖥️ All-in-One Studio Architecture
 
-### Cerințe de Sistem:
-* **Sistem de Operare**: Windows 10 / 11 (64-bit)
-* **Python**: 3.10, 3.11, 3.12, 3.13 sau 3.14
-* **Cameră Web**: Orice webcam USB sau integrat (720p/1080p recomandat)
-* **GPU**: Orice placă video compatibilă OpenCL (ex: AMD Radeon RX 6000/7000, NVIDIA GTX/RTX, Intel Iris)
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ ⚡ GazeAlert Studio | Medical-Grade Eye Tracking & Cognitive Suite      🟢 30.0 FPS • Motor Activ│
+├───────────────────────────────────────────────────────┬──────────────────────────────────────────┤
+│                                                       │ [ 📊 Tablou Principal ] [ 🔬 Telemetrie ]│
+│                                                       │                                          │
+│                 [ CAMERA STREAM HD ]                  │  ┌─ STARE DE CONCENTRARE ─────────────┐  │
+│                                                       │  │ 100%    Stare: CONCENTRAT          │  │
+│             • Face Mesh 478 Puncte Sub-Pixel          │  │         Pomodoro: 25:00 [STUDIU]   │  │
+│             • Pupillometrie Daugman & Raze Gaze       │  │         Flow: DEEP FLOW (Optimal)  │  │
+│             • Distraction Shield (Monk Mode)          │  └────────────────────────────────────┘  │
+│             • Banner HUD Superior & Telemetrie        │                                          │
+│                                                       │  📏 Distanță: 52 cm (Optim)  👁️ Ochi: ON  │
+│                                                       │  🏆 Nivel 1 • 24 XP          24/100 XP   │
+│                                                       │  [████████░░░░░░░░░░░░░░░░░░░░░░░░░░░]   │
+│                                                       │                                          │
+│                                                       │  ACȚIUNI RAPIDE (1-CLICK & TASTE):       │
+│                                                       │  [ 🎯 Calibrează [C] ] [ 📐 9 Pct [K]  ] │
+│                                                       │  [ ⏱️ Pomodoro  [P] ] [ 🛡️ Monk [M]   ] │
+│                                                       │  [ 🔔 Sunet     [S] ] [ 🎭 Plasă [F]   ] │
+│                                                       │  [ 📊 Vezi Raport & Heatmap [R]        ] │
+└───────────────────────────────────────────────────────┴──────────────────────────────────────────┘
+```
 
-### 1. Clonare Repository
+---
+
+## 🔬 Scientific & Mathematical Foundations
+
+```mermaid
+graph LR
+    A[Webcam 720p / 1080p] --> B[DirectShow Ring Buffer]
+    B --> C[MediaPipe 478 Mesh]
+    C --> D[Sub-Pixel Daugman Iris 0.05px]
+    C --> E[3D Head Pose solvePnP]
+    D & E --> F[Anatomical Angle Kappa Correction]
+    F --> G[1-Euro Filter Jitter Smoothing]
+    G --> H[Cognitive Flow Classifier]
+    G --> I[2D Screen Gaze Heatmap]
+    H & I --> J[Smart Audio Coach & Pomodoro]
+```
+
+### 1. Daugman Integro-Differential Operator
+$$\max_{(r, x_0, y_0)} \left| G_\sigma(r) * \frac{\partial}{\partial r} \oint_{r, x_0, y_0} \frac{I(x, y)}{2\pi r} \, ds \right|$$
+
+### 2. Anatomical Foveal Correction (Angle Kappa $\kappa$)
+$$\text{Gaze}_{\text{yaw}} = \text{Head}_{\text{yaw}} + \text{Iris}_{\text{offset}} \cdot K_x + \kappa_{\text{horizontal}}$$
+$$\text{Gaze}_{\text{pitch}} = \text{Head}_{\text{pitch}} + \text{Iris}_{\text{offset}} \cdot K_y + \kappa_{\text{vertical}}$$
+
+### 3. Adaptive 1-Euro Filter Cutoff
+$$f_c = f_{c,\min} + \beta \cdot |\dot{x}| \quad \quad \alpha = \frac{1}{1 + \frac{\tau}{T_e}}$$
+
+---
+
+## ⌨️ Keyboard Hotkeys Reference
+
+| Hotkey | Action | Description |
+| :---: | :--- | :--- |
+| **`C`** | **Instant Center Snap (1s)** | Calibrates baseline gaze position to current comfortable posture ($0.0^\circ$). |
+| **`K`** | **9-Point Screen Calibrator** | Initiates full 9-point polynomial regression calibration across monitor bounds. |
+| **`P`** / `Space` | **Pomodoro Timer** | Starts, pauses, or resumes the 25/5 study session timer. |
+| **`M`** | **Monk Mode** | Toggles full-screen distraction shielding & peripheral darkening. |
+| **`S`** | **Audio Alerts** | Mutes / unmutes non-intrusive harmonic alert chimes. |
+| **`F`** | **Face Mesh & Lasers** | Toggles real-time 478-point wireframe and 3D eye laser rays overlay. |
+| **`R`** / **`E`** | **Report & Heatmap** | Generates and opens interactive HTML5 report and 2D gaze heatmap in browser. |
+| **`Q`** / `ESC` | **Safe Exit** | Persists session history to SQLite & JSON and gracefully releases hardware. |
+
+---
+
+## 🚀 Quickstart & Installation
+
+### Prerequisites:
+- **OS**: Windows 10 / 11 (64-bit)
+- **Python**: 3.10 to 3.14
+- **Hardware**: Standard USB or integrated webcam
+
+### 1. Clone Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/GazeAlert.git
+git clone https://github.com/Blaga123/GazeAlert.git
 cd GazeAlert
 ```
 
-### 2. Instalare Dependențe
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Pornire Aplicație
-Fă dublu-click pe **`run.bat`** sau rulează în terminal:
+### 3. Run GazeAlert Studio
 ```bash
+# Option A: Double-click run.bat in Windows Explorer
+# Option B: Run via Python terminal
 python main.py
 ```
 
 ---
 
-## 🏗️ Structura Proiectului
+## 🧪 Verification & Automated Testing
 
-```
-GazeAlert/
-├── main.py                   # Punctul principal de intrare, buclă video și randare HUD
-├── gaze_detector.py          # Motorul AI: Daugman, Unghi Kappa, Pupillometrie, PERCLOS
-├── modern_gui.py             # Widget plutitor frameless (Tkinter + Windows DWM)
-├── system_tray.py            # Integrare în bara de sistem (pystray) cu meniu click-dreapta
-├── alert_manager.py          # Notificări progresive Windows Toast și throttling anti-spam
-├── sound_manager.py          # Sintetizator armonic de sunete WAV (0 ms latență)
-├── theme_manager.py          # Manager teme vizuale (Cyberpunk, Nord, Warm Amber, Light)
-├── session_logger.py         # Persistență automată în SQLite și export CSV/JSON
-├── study_manager.py          # Motor Pomodoro, auto-pause și raport HTML interactiv
-├── pro_face_tessellation.py  # Mască 3D 478 landmarks și raze laser fluorescente
-├── screen_calibrator.py      # Calibrator în 9 puncte cu regresie polinomială Ridge
-├── one_euro_filter.py        # Filtrare adaptivă 1-Euro fără lag
-├── test_system.py            # Suită completă de 8 teste automate unitare
-├── config.json               # Configurație personalizabilă
-└── run.bat                   # Script de lansare rapidă pe Windows
-```
-
----
-
-## 🧪 Rulare Teste Automate
-Pentru a valida toate cele 8 module (AI, Video, Audio, Teme, Bază de Date, Tray):
+GazeAlert includes a comprehensive 8-module test suite validating neural inference, sound synthesis, filters, and persistence:
 ```bash
 python test_system.py
 ```
 
+```text
+============================================================
+  Rulare Teste de Verificare: GazeAlert AI & Study Suite
+============================================================
+[TEST 1/5] Verificare Filtru 1-Euro...             -> [PASS]
+[TEST 2/5] Verificare Calibrator 9-Puncte...       -> [PASS]
+[TEST 3/6] Verificare Detector Pupillometrie...    -> [PASS]
+[TEST 4/5] Verificare Expresii Faciale AU4/AU9...  -> [PASS]
+[TEST 5/6] Verificare Motor Pomodoro & Eficienta.. -> [PASS]
+[TEST 6/7] Verificare Config & AlertManager...     -> [PASS]
+[TEST 7/7] Verificare Session Logger & SQLite...   -> [PASS]
+[TEST 8/8] Verificare Teme Vizuale & Sunete WAV... -> [PASS]
+============================================================
+  [SUCCESS] Toate cele 8 module functioneaza 100%!
+============================================================
+```
+
 ---
 
-## 📄 Licență
-Acest proiect este licențiat sub termenii licenței **MIT**. Vezi fișierul `LICENSE` pentru detalii.
+## 👨‍💻 Author & Research Affiliation
+
+<div align="center">
+
+**Blaga Ioan Cătălin**  
+*Medical Informatics & Autonomous AI Engineering*  
+George Emil Palade University of Medicine, Pharmacy, Science and Technology of Târgu Mureș  
+
+[![GitHub](https://img.shields.io/badge/GitHub-Blaga123-181717?style=flat-square&logo=github)](https://github.com/Blaga123)
+[![Email](https://img.shields.io/badge/Email-blaga.ioan--catalin.24@stud.umfst.ro-EA4335?style=flat-square&logo=gmail)](mailto:blaga.ioan-catalin.24@stud.umfst.ro)
+
+</div>
+
+---
+
+## 📄 License
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.

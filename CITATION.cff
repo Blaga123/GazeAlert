@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software in your academic research, please cite it as below."
+authors:
+- family-names: "Blaga"
+  given-names: "Ioan Catalin"
+  affiliation: "George Emil Palade University of Medicine, Pharmacy, Science and Technology of Targu Mures"
+  orcid: ""
+title: "GazeAlert AI: Medical-Grade Real-Time Eye Tracking, Cognitive Load Estimation & Autonomous Study Suite"
+version: 2.0.0
+date-released: 2026-08-25
+url: "https://github.com/Blaga123/GazeAlert"
