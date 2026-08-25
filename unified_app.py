@@ -128,7 +128,15 @@ class UnifiedGazeApp:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=2)
         except Exception:
-            pass
+            try:
+                appdata = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+                target_dir = os.path.join(appdata, "GazeAlert")
+                os.makedirs(target_dir, exist_ok=True)
+                user_cfg = os.path.join(target_dir, "config.json")
+                with open(user_cfg, "w", encoding="utf-8") as f:
+                    json.dump(self.config, f, indent=2)
+            except Exception:
+                pass
 
     def _init_window(self):
         self.root = tk.Tk()

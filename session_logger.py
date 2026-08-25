@@ -9,8 +9,22 @@ import sqlite3
 import time
 from typing import Any, Dict, List
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "study_history.db")
-JSON_PATH = os.path.join(os.path.dirname(__file__), "study_history.json")
+def _get_writable_dir() -> str:
+    try:
+        local_dir = os.path.dirname(os.path.abspath(__file__))
+        test_file = os.path.join(local_dir, ".write_test")
+        with open(test_file, "w") as f:
+            f.write("1")
+        os.remove(test_file)
+        return local_dir
+    except Exception:
+        appdata = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+        target = os.path.join(appdata, "GazeAlert")
+        os.makedirs(target, exist_ok=True)
+        return target
+
+DB_PATH = os.path.join(_get_writable_dir(), "study_history.db")
+JSON_PATH = os.path.join(_get_writable_dir(), "study_history.json")
 
 
 class SessionLogger:

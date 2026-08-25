@@ -589,5 +589,14 @@ class StudyManager:
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(html)
             return full_path
-        except Exception as e:
-            return ""
+        except Exception:
+            try:
+                appdata = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+                target_dir = os.path.join(appdata, "GazeAlert")
+                os.makedirs(target_dir, exist_ok=True)
+                full_path = os.path.join(target_dir, os.path.basename(filepath))
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(html)
+                return full_path
+            except Exception:
+                return ""
