@@ -446,11 +446,20 @@ class UnifiedGazeApp:
 
             # Draw AI Overlays on Camera Frame
             h, w = frame.shape[:2]
-            if gaze.face_detected and self.show_mesh:
-                if len(gaze.landmarks_2d) > 400:
-                    draw_pixel_perfect_mesh(frame, gaze.landmarks_2d, gaze.iris_points_left, gaze.iris_points_right)
-                else:
-                    draw_face_mesh_contours(frame, gaze.landmarks_2d, gaze.iris_points_left, gaze.iris_points_right)
+            scale = min(w / 640.0, h / 480.0)
+            if gaze.face_detected and self.show_mesh and gaze.landmarks_2d is not None:
+                draw_pixel_perfect_mesh(
+                    frame=frame,
+                    landmarks_2d=gaze.landmarks_2d,
+                    scale=scale,
+                    pupil_left=gaze.left_iris_center,
+                    pupil_right=gaze.right_iris_center,
+                    gaze_ray_l_end=gaze.left_gaze_ray_end,
+                    gaze_ray_r_end=gaze.right_gaze_ray_end,
+                    pupil_radius_l=gaze.left_pupil_radius,
+                    pupil_radius_r=gaze.right_pupil_radius,
+                    is_focused=gaze.is_looking_at_screen
+                )
 
             # Top HUD Status Banner
             badge_color = (0, 255, 120) if gaze.is_looking_at_screen else (0, 60, 255)
