@@ -25,6 +25,7 @@ from system_tray import SystemTrayManager
 from session_logger import SessionLogger
 from theme_manager import ThemeManager
 from modern_gui import FloatingPillWidget
+from control_center import ControlCenterGUI
 
 
 class GlobalHotkeyListener:
@@ -403,6 +404,29 @@ def main():
     )
     pill_widget.start()
 
+    def _save_cfg_handler(new_cfg: Dict[str, Any]):
+        nonlocal away_thresh
+        away_thresh = float(new_cfg.get("away_threshold_seconds", away_thresh))
+        detector.head_yaw_thresh = float(new_cfg.get("head_yaw_threshold", detector.head_yaw_thresh))
+        study_mgr.focus_duration_sec = float(new_cfg.get("pomodoro_focus_minutes", 25.0)) * 60.0
+        try:
+            with open("config.json", "w", encoding="utf-8") as f:
+                json.dump(new_cfg, f, indent=2)
+        except Exception:
+            pass
+
+    control_center = ControlCenterGUI(
+        config=config,
+        on_calibrate_center=lambda: setattr(hotkey_listener, 'pending_action', 'C'),
+        on_calibrate_9point=lambda: setattr(hotkey_listener, 'pending_action', 'K'),
+        on_toggle_pomodoro=lambda: setattr(hotkey_listener, 'pending_action', 'P'),
+        on_toggle_sound=lambda: alert_mgr.toggle_sound(),
+        on_toggle_monk=lambda: setattr(hotkey_listener, 'pending_action', 'N') or (not monk_mode_enabled),
+        on_toggle_pill=lambda: pill_widget.toggle(),
+        on_open_report=_tray_report,
+        on_save_config=_save_cfg_handler
+    )
+
     tray_manager = SystemTrayManager(
         on_toggle_window=_tray_toggle_win,
         on_toggle_widget=_tray_toggle_widget,
@@ -426,15 +450,16 @@ def main():
     calib_banner_text = ""
     calib_banner_time = 0.0
 
-    # Start Global Windows Hotkeys Thread (Ctrl+Alt+C / Ctrl+Alt+W / Ctrl+Alt+P / Ctrl+Alt+S / Ctrl+Alt+H / Ctrl+Alt+G)
+    # Start Global Windows Hotkeys Thread (Ctrl+Alt+C / Ctrl+Alt+W / Ctrl+Alt+P / Ctrl+Alt+S / Ctrl+Alt+H / Ctrl+Alt+G / Ctrl+Alt+D)
     hotkey_listener = GlobalHotkeyListener()
 
     print("-" * 75)
     print("Moduri de Lucru & Scurtaturi Globale de Windows:")
-    print("  [Ctrl+Alt+W] sau [W] Mini-Widget OpenCV  |  [Ctrl+Alt+G] sau [G] Widget Plutitor (Pill)")
-    print("  [Ctrl+Alt+H] sau [H] Minimize to Tray     |  [Ctrl+Alt+C] sau [C] Calibrare Rapida")
-    print("  [Ctrl+Alt+P] sau [P] Toggle Pomodoro      |  [Ctrl+Alt+S] sau [S] Sunet Alerta ON/OFF")
-    print("  [O] Schimba Tema Culori                   |  [E] Exporta CSV/JSON  |  [Q] Exit")
+    print("  [D] Panou Control GUI Modern              |  [Ctrl+Alt+G] sau [G] Widget Plutitor (Pill)")
+    print("  [Ctrl+Alt+W] sau [W] Mini-Widget OpenCV  |  [Ctrl+Alt+H] sau [H] Minimize to Tray")
+    print("  [Ctrl+Alt+C] sau [C] Calibrare Rapida     |  [K] Calibrare 9 Puncte pe Ecran")
+    print("  [Ctrl+Alt+P] sau [P] Toggle Pomodoro      |  [N] Monk Mode Shield")
+    print("  [Ctrl+Alt+S] sau [S] Sunet Alerta ON/OFF  |  [E] Exporta CSV/JSON  |  [Q] Exit")
     print("-" * 75)
 
     try:
@@ -522,6 +547,22 @@ def main():
                     f"Pomo: {pomo_str} | Dist: {int(gaze.distance_cm)}cm | XP: {cur_xp}/{needed_xp}",
                     orb_hex,
                     progress_pct=float(study_mgr.get_efficiency_score())
+                )
+
+            # Update Control Center Desktop Dashboard (if visible)
+            if control_center.is_open:
+                lvl, cur_xp, needed_xp, ratio = study_mgr.get_level_info()
+                control_center.update_telemetry(
+                    focus_pct=study_mgr.get_efficiency_score(),
+                    status_label=gaze.expression_label if gaze.face_detected else "ABSENT",
+                    pomo_str=study_mgr.get_pomodoro_string(),
+                    distance_cm=int(gaze.distance_cm),
+                    posture_str=gaze.posture_status,
+                    xp=study_mgr.total_xp,
+                    level=lvl,
+                    needed_xp=needed_xp,
+                    level_ratio=ratio,
+                    is_focused=gaze.is_looking_at_screen
                 )
 
             active_theme = theme_mgr.current
@@ -797,6 +838,9 @@ def main():
                 calib_banner_text = f"MONK MODE: {'ACTIVAT 🛡️' if monk_mode_enabled else 'DEZACTIVAT'}"
                 calib_banner_time = time.time()
                 print(f"[+] Monk Mode (Distraction Shield): {'ACTIVAT' if monk_mode_enabled else 'DEZACTIVAT'}")
+            elif key in [ord('d'), ord('D')]:
+                control_center.show(pill_widget.root if pill_widget.root else None)
+                print("[+] Panou de Control Desktop (Studio Dashboard) deschis!")
             elif key in [ord('e'), ord('E')]:
                 csv_p = session_logger.export_to_csv()
                 json_p = session_logger.export_to_json()
