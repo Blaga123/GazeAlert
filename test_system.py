@@ -91,8 +91,9 @@ def test_study_engine():
     from study_manager import StudyManager
     mgr = StudyManager(pomodoro_focus_min=25.0, pomodoro_break_min=5.0)
     assert mgr.is_pomodoro_active is True
-    # Simulate focused ticks
+    # Simulate focused ticks with measurable time delta
     for _ in range(5):
+        time.sleep(0.015)
         mgr.update(is_focused=True, smart_state="FOCUS_ACTIVE", is_yawning=False)
     assert mgr.stats.pure_focus_seconds > 0.0
     eff = mgr.get_efficiency_score()
