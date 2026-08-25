@@ -1,8 +1,8 @@
 """
-GazeAlert Unified Studio App • Peak Performance & Maximum Usability Edition.
+GazeAlert Unified Studio App • Peak Performance & Flicker-Free Edition.
 Integrates Real-Time AI Camera Feed, Interactive Controls, Global Keyboard Shortcuts,
 and Comprehensive Medical-Grade Eye, Pupil & Biometric Telemetry in a Single Seamless Window.
-Optimized for 30-60 FPS smooth rendering with zero layout shifting, instant hotkeys, and friendly UX.
+Zero flickering with hardware double-buffered centered video blitting.
 """
 
 import json
@@ -77,8 +77,6 @@ class UnifiedGazeApp:
         # Cached canvas dimensions for zero-lag rendering
         self._target_w = 760
         self._target_h = 428
-        self._offset_x = 0
-        self._offset_y = 0
 
         # Camera
         webcam_id = int(self.config.get("webcam_id", 0))
@@ -203,14 +201,16 @@ class UnifiedGazeApp:
         content_frame.grid_columnconfigure(1, weight=0, minsize=430) # Right Sidebar fixed width
         content_frame.grid_rowconfigure(0, weight=1)
 
-        # Left Column: Video Feed Canvas Frame
+        # Left Column: Video Feed Container
         self.video_box = tk.Frame(content_frame, bg="#000000", highlightthickness=1, highlightbackground="#1e293b")
         self.video_box.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self.video_box.pack_propagate(False)
+        self.video_box.grid_propagate(False)
         self.video_box.bind("<Configure>", self._on_canvas_resize)
 
-        self.video_canvas = tk.Canvas(self.video_box, bg="#000000", highlightthickness=0)
-        self.video_canvas.pack(fill="both", expand=True)
-        self.canvas_img_id = self.video_canvas.create_image(0, 0, anchor="nw")
+        # Flicker-free centered video label
+        self.video_label = tk.Label(self.video_box, bg="#000000", borderwidth=0, highlightthickness=0)
+        self.video_label.place(relx=0.5, rely=0.5, anchor="center")
 
         # Right Column: Studio Control Hub
         sidebar = tk.Frame(content_frame, bg="#0d131f", width=430, highlightthickness=1, highlightbackground="#1e293b")
@@ -252,9 +252,6 @@ class UnifiedGazeApp:
         else:
             self._target_w = box_w
             self._target_h = int(box_w / aspect)
-
-        self._offset_x = max(0, (box_w - self._target_w) // 2)
-        self._offset_y = max(0, (box_h - self._target_h) // 2)
 
     def _show_toast(self, message: str, duration_sec: float = 3.0):
         """Displays temporary user-friendly status banner in the top bar."""
@@ -633,14 +630,13 @@ class UnifiedGazeApp:
                 cv2.rectangle(frame, (8, 8), (w - 8, h - 8), (0, 0, 255), 4)
                 cv2.putText(frame, "MONK MODE: ATENTIE LA ECRAN!", (int(w * 0.18), int(h * 0.52)), cv2.FONT_HERSHEY_DUPLEX, 0.70, (0, 140, 255), 2, cv2.LINE_AA)
 
-            # Fast Aspect-Ratio Fit without UI lag
+            # Fast Flicker-Free Image Swap with Double Buffering
             resized = cv2.resize(frame, (self._target_w, self._target_h), interpolation=cv2.INTER_LINEAR)
             rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(rgb)
             imgtk = ImageTk.PhotoImage(image=img)
-            self.video_canvas.imgtk = imgtk
-            self.video_canvas.coords(self.canvas_img_id, self._offset_x, self._offset_y)
-            self.video_canvas.itemconfig(self.canvas_img_id, image=imgtk)
+            self.video_label.imgtk = imgtk
+            self.video_label.configure(image=imgtk)
 
             # Throttle UI text telemetry updates to 10 FPS to save CPU for maximum fluid video
             if now - self._last_ui_update >= 0.10:
