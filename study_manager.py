@@ -289,6 +289,22 @@ class StudyManager:
         state_label = "PAUZA" if self.is_on_break else ("STUDIU (PAUZA AUTO)" if self.is_paused else "STUDIU ACTIV")
         return f"{mins:02d}:{secs:02d} [{state_label}]"
 
+    def save_session(self, logger):
+        """Helper to save study stats to SessionLogger."""
+        if not logger:
+            return
+        eff = self.get_efficiency_score()
+        grade = "A+" if eff >= 90 else ("A" if eff >= 80 else ("B" if eff >= 70 else "C"))
+        logger.save_session(
+            total_seconds=self.stats.total_study_seconds,
+            pure_focus_seconds=self.stats.pure_focus_seconds,
+            distraction_seconds=self.stats.distraction_seconds,
+            efficiency_pct=eff,
+            phone_count=self.stats.phone_distractions_count,
+            yawn_count=self.stats.yawns_count,
+            grade=grade
+        )
+
     def generate_summary_report(self) -> str:
         total_m = int(self.stats.total_study_seconds // 60)
         total_s = int(self.stats.total_study_seconds % 60)
