@@ -71,15 +71,12 @@ class ThreadedCamera:
             if not self.cap.isOpened():
                 time.sleep(0.01)
                 continue
-            # Continuous grab to drain internal Windows DirectShow buffer
-            ret = self.cap.grab()
-            if ret:
-                ret, frame = self.cap.retrieve()
-                if ret and frame is not None:
-                    with self.lock:
-                        self.latest_frame = frame
+            ret, frame = self.cap.read()
+            if ret and frame is not None and frame.size > 0:
+                with self.lock:
+                    self.latest_frame = frame
             else:
-                time.sleep(0.001)
+                time.sleep(0.005)
 
     def read(self) -> Tuple[bool, Optional[np.ndarray]]:
         """Fetch the freshest frame instantly in 0 ms without blocking."""

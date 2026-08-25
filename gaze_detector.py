@@ -221,9 +221,9 @@ class GazeDetector:
                     running_mode=vision.RunningMode.IMAGE,
                     output_face_blendshapes=True,
                     num_faces=1,
-                    min_face_detection_confidence=0.35,
-                    min_face_presence_confidence=0.35,
-                    min_tracking_confidence=0.35,
+                    min_face_detection_confidence=0.25,
+                    min_face_presence_confidence=0.25,
+                    min_tracking_confidence=0.25,
                 )
                 self.task_landmarker = vision.FaceLandmarker.create_from_options(options)
                 print("[+] Motor AI Medical-Grade initializat (Sub-Pixel Daugman + Angle Kappa)!")
