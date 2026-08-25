@@ -1,8 +1,8 @@
 """
-GazeAlert Unified Studio App.
-Integrates the Real-Time AI Camera Feed, Interactive Controls, and
-Comprehensive Medical-Grade Eye, Pupil & Biometric Telemetry Tables in a Single Window.
-Optimized for 30+ FPS smooth rendering with zero layout shifting and intuitive UX.
+GazeAlert Unified Studio App • Peak Performance & Maximum Usability Edition.
+Integrates Real-Time AI Camera Feed, Interactive Controls, Global Keyboard Shortcuts,
+and Comprehensive Medical-Grade Eye, Pupil & Biometric Telemetry in a Single Seamless Window.
+Optimized for 30-60 FPS smooth rendering with zero layout shifting, instant hotkeys, and friendly UX.
 """
 
 import json
@@ -94,7 +94,7 @@ class UnifiedGazeApp:
             use_mjpg=use_mjpg
         )
 
-        # Build Single GUI Window
+        # Build Single GUI Window & Bind Hotkeys
         self._init_window()
 
     def _load_config(self) -> Dict[str, Any]:
@@ -147,6 +147,7 @@ class UnifiedGazeApp:
             pass
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.bind("<Key>", self._on_key_press)
 
         # 1. Top Global Status Bar
         top_bar = tk.Frame(self.root, bg="#0d131f", height=46, padx=16, pady=6)
@@ -174,13 +175,13 @@ class UnifiedGazeApp:
         # Notification Toast Pill (in top bar)
         self.lbl_toast = tk.Label(
             top_bar,
-            text="",
-            font=("Segoe UI", 9, "bold"),
+            text="[Comenzi Rapide: C=Calibrare | P=Pomodoro | M=Monk | S=Sunet | F=Plasă]",
+            font=("Segoe UI", 8, "bold"),
             fg="#38bdf8",
             bg="#0d131f",
-            padx=8
+            padx=10
         )
-        self.lbl_toast.pack(side="left", padx=20)
+        self.lbl_toast.pack(side="left", padx=15)
 
         self.lbl_fps_badge = tk.Label(
             top_bar,
@@ -199,7 +200,7 @@ class UnifiedGazeApp:
         content_frame.pack(fill="both", expand=True)
 
         content_frame.grid_columnconfigure(0, weight=1)              # Left Video Feed
-        content_frame.grid_columnconfigure(1, weight=0, minsize=425) # Right Sidebar fixed width
+        content_frame.grid_columnconfigure(1, weight=0, minsize=430) # Right Sidebar fixed width
         content_frame.grid_rowconfigure(0, weight=1)
 
         # Left Column: Video Feed Canvas Frame
@@ -212,7 +213,7 @@ class UnifiedGazeApp:
         self.canvas_img_id = self.video_canvas.create_image(0, 0, anchor="nw")
 
         # Right Column: Studio Control Hub
-        sidebar = tk.Frame(content_frame, bg="#0d131f", width=425, highlightthickness=1, highlightbackground="#1e293b")
+        sidebar = tk.Frame(content_frame, bg="#0d131f", width=430, highlightthickness=1, highlightbackground="#1e293b")
         sidebar.grid(row=0, column=1, sticky="nsew")
         sidebar.grid_propagate(False)
         sidebar.pack_propagate(False)
@@ -255,10 +256,33 @@ class UnifiedGazeApp:
         self._offset_x = max(0, (box_w - self._target_w) // 2)
         self._offset_y = max(0, (box_h - self._target_h) // 2)
 
-    def _show_toast(self, message: str, duration_sec: float = 2.5):
+    def _show_toast(self, message: str, duration_sec: float = 3.0):
         """Displays temporary user-friendly status banner in the top bar."""
-        self.lbl_toast.configure(text=message)
-        self.root.after(int(duration_sec * 1000), lambda: self.lbl_toast.configure(text=""))
+        self.lbl_toast.configure(text=message, fg="#00FF78")
+        self.root.after(int(duration_sec * 1000), lambda: self.lbl_toast.configure(
+            text="[Comenzi Rapide: C=Calibrare | P=Pomodoro | M=Monk | S=Sunet | F=Plasă]",
+            fg="#38bdf8"
+        ))
+
+    def _on_key_press(self, event):
+        """Handles instant global keyboard shortcuts."""
+        k = event.char.lower() if event.char else ""
+        if k == "c":
+            self._do_calib_center()
+        elif k == "k":
+            self._do_calib_9point()
+        elif k == "p" or event.keysym == "space":
+            self._do_toggle_pomo()
+        elif k == "m":
+            self._do_toggle_monk()
+        elif k == "s":
+            self._do_toggle_sound()
+        elif k == "f":
+            self._do_toggle_mesh()
+        elif k in ["r", "e"]:
+            self._do_open_report()
+        elif event.keysym in ["Escape", "q", "Q"]:
+            self.on_close()
 
     def _build_sidebar_live(self, parent: tk.Frame):
         # Card 1: Focus Score, Flow & Pomodoro
@@ -315,7 +339,7 @@ class UnifiedGazeApp:
         self.progress_xp.pack(fill="x", pady=4)
 
         # 1-Click Action Buttons
-        tk.Label(parent, text="ACȚIUNI RAPIDE (1-CLICK)", font=("Segoe UI", 8, "bold"), fg="#64748b", bg="#0d131f").pack(anchor="w", pady=(2, 4))
+        tk.Label(parent, text="ACȚIUNI RAPIDE (1-CLICK & TASTE RAPIDE)", font=("Segoe UI", 8, "bold"), fg="#64748b", bg="#0d131f").pack(anchor="w", pady=(2, 4))
 
         btn_grid = tk.Frame(parent, bg="#0d131f")
         btn_grid.pack(fill="x")
@@ -336,25 +360,25 @@ class UnifiedGazeApp:
                 cursor="hand2"
             )
 
-        b1 = make_btn("🎯 Calibrează Centru (1s)", self._do_calib_center, color="#0284c7")
+        b1 = make_btn("🎯 Calibrează Centru [C]", self._do_calib_center, color="#0284c7")
         b1.grid(row=0, column=0, padx=2, pady=2, sticky="nsew")
 
-        b2 = make_btn("📐 Calibrare 9 Puncte", self._do_calib_9point, color="#4f46e5")
+        b2 = make_btn("📐 Calibrare 9 Pct [K]", self._do_calib_9point, color="#4f46e5")
         b2.grid(row=0, column=1, padx=2, pady=2, sticky="nsew")
 
-        b3 = make_btn("⏱️ Start/Pauză Pomodoro", self._do_toggle_pomo, color="#059669")
+        b3 = make_btn("⏱️ Start Pomodoro [P]", self._do_toggle_pomo, color="#059669")
         b3.grid(row=1, column=0, padx=2, pady=2, sticky="nsew")
 
-        self.btn_monk = make_btn("🛡️ Monk Mode: OFF", self._do_toggle_monk, color="#1e293b")
+        self.btn_monk = make_btn("🛡️ Monk Mode [M]: OFF", self._do_toggle_monk, color="#1e293b")
         self.btn_monk.grid(row=1, column=1, padx=2, pady=2, sticky="nsew")
 
-        self.btn_sound = make_btn("🔔 Sunet Alerte: ON", self._do_toggle_sound, color="#1e293b")
+        self.btn_sound = make_btn("🔔 Sunet [S]: ON", self._do_toggle_sound, color="#1e293b")
         self.btn_sound.grid(row=2, column=0, padx=2, pady=2, sticky="nsew")
 
-        self.btn_mesh = make_btn("🎭 Plasă & Raze: ON", self._do_toggle_mesh, color="#1e293b")
+        self.btn_mesh = make_btn("🎭 Plasă [F]: ON", self._do_toggle_mesh, color="#1e293b")
         self.btn_mesh.grid(row=2, column=1, padx=2, pady=2, sticky="nsew")
 
-        b7 = make_btn("📊 Vezi Raport & Heatmap", self._do_open_report, color="#d97706")
+        b7 = make_btn("📊 Raport & Heatmap [R]", self._do_open_report, color="#d97706")
         b7.grid(row=3, column=0, columnspan=2, padx=2, pady=2, sticky="nsew")
 
         btn_grid.columnconfigure(0, weight=1)
@@ -368,7 +392,7 @@ class UnifiedGazeApp:
 
         tk.Label(card_eyes, text="BIOMETRIE OCHI & PUPILLOMETRIE", font=("Segoe UI", 9, "bold"), fg="#38bdf8", bg="#131d31").pack(anchor="w", pady=(0, 6))
 
-        def add_row(parent_card, label_text, tooltip_hint=""):
+        def add_row(parent_card, label_text):
             r = tk.Frame(parent_card, bg="#131d31")
             r.pack(fill="x", pady=2)
             lbl = tk.Label(r, text=label_text, font=("Segoe UI", 8), fg="#94a3b8", bg="#131d31")
@@ -462,11 +486,11 @@ class UnifiedGazeApp:
             )
             self.away_start_time = None
             self.away_elapsed = 0.0
-            self._show_toast("✓ Centru calibrat la (0.0°, 0.0°)")
+            self._show_toast(f"✓ Centru calibrat la baseline (Yaw: {self.detector.calibrated_yaw:+.1f}°, Pitch: {self.detector.calibrated_pitch:+.1f}°)")
 
     def _do_calib_9point(self):
         self.calibrator.start_calibration()
-        self._show_toast("📐 Calibrare 9 puncte inițiată (privește spre ținte)")
+        self._show_toast("📐 Calibrare 9 puncte inițiată (privește spre țintele de pe ecran)")
 
     def _do_toggle_pomo(self):
         active = self.study_mgr.toggle_pomodoro()
@@ -475,15 +499,15 @@ class UnifiedGazeApp:
     def _do_toggle_monk(self):
         self.monk_mode_enabled = not self.monk_mode_enabled
         self.btn_monk.configure(
-            text=f"🛡️ Monk Mode: {'ON' if self.monk_mode_enabled else 'OFF'}",
+            text=f"🛡️ Monk Mode [M]: {'ON' if self.monk_mode_enabled else 'OFF'}",
             bg="#b91c1c" if self.monk_mode_enabled else "#1e293b"
         )
-        self._show_toast(f"🛡️ Monk Mode: {'ACTIVAT' if self.monk_mode_enabled else 'DEZACTIVAT'}")
+        self._show_toast(f"🛡️ Monk Mode: {'ACTIVAT (Scut Distrageri)' if self.monk_mode_enabled else 'DEZACTIVAT'}")
 
     def _do_toggle_sound(self):
         active = self.alert_mgr.toggle_sound()
         self.btn_sound.configure(
-            text=f"🔔 Sunet: {'ON' if active else 'OFF'}",
+            text=f"🔔 Sunet [S]: {'ON' if active else 'OFF'}",
             bg="#059669" if active else "#1e293b"
         )
         self._show_toast(f"🔔 Sunet alerte: {'ACTIVAT' if active else 'OPRIT'}")
@@ -491,16 +515,16 @@ class UnifiedGazeApp:
     def _do_toggle_mesh(self):
         self.show_mesh = not self.show_mesh
         self.btn_mesh.configure(
-            text=f"🎭 Plasă & Raze: {'ON' if self.show_mesh else 'OFF'}",
+            text=f"🎭 Plasă [F]: {'ON' if self.show_mesh else 'OFF'}",
             bg="#059669" if self.show_mesh else "#1e293b"
         )
-        self._show_toast(f"🎭 Afișare plasă: {'ACTIVATĂ' if self.show_mesh else 'ASCUNSĂ'}")
+        self._show_toast(f"🎭 Plasă & Raze: {'VIZIBILE' if self.show_mesh else 'ASCUNSE'}")
 
     def _do_open_report(self):
         p = self.study_mgr.generate_html_report("study_report.html")
         if p:
             webbrowser.open(p)
-            self._show_toast("📊 Raport & Heatmap deschise în browser")
+            self._show_toast("📊 Raport & Heatmap deschise în browser!")
 
     def _do_save_settings(self):
         self.config["head_yaw_threshold"] = float(self.scale_yaw.get())
@@ -510,7 +534,7 @@ class UnifiedGazeApp:
         self.alert_mgr.away_delay_sec = float(self.scale_delay.get())
         self.study_mgr.focus_duration_sec = float(self.scale_pomo.get()) * 60.0
         self._save_config()
-        self._show_toast("💾 Preferințele au fost salvate!")
+        self._show_toast("💾 Preferințele au fost salvate cu succes!")
 
     def start_loop(self):
         """Main update loop."""
@@ -662,7 +686,7 @@ class UnifiedGazeApp:
         self.detector.close()
         self.camera.release()
         self.root.destroy()
-        print("\n[+] Sesiune salvata. Aplicatia GazeAlert a fost inchisa.")
+        print("\n[+] Sesiune salvata. Aplicatia GazeAlert a fost inchisa cu succes.")
 
 
 def main():
