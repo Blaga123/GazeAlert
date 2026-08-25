@@ -1,16 +1,15 @@
 @echo off
-chcp 65001 > nul
-title GazeAlert Studio • AI Eye Tracking Suite
+title GazeAlert Studio AI Suite
 cls
 
 echo ============================================================
-echo   🚀 GazeAlert Studio - Pornire aplicatie...
+echo   [+] GazeAlert Studio - Pornire aplicatie...
 echo ============================================================
 echo.
 
 cd /d "%~dp0"
 
-:: 1. Lansare instantanee a aplicatiei Python
+:: Lansare aplicatie Python
 python main.py
 
 if %ERRORLEVEL% NEQ 0 (
