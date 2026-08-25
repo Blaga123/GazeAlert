@@ -55,8 +55,8 @@ class UnifiedGazeApp:
         )
 
         self.study_mgr = StudyManager(
-            focus_duration_min=float(self.config.get("pomodoro_focus_minutes", 25.0)),
-            break_duration_min=float(self.config.get("pomodoro_break_minutes", 5.0)),
+            pomodoro_focus_min=float(self.config.get("pomodoro_focus_minutes", 25.0)),
+            pomodoro_break_min=float(self.config.get("pomodoro_break_minutes", 5.0)),
             eye_rest_interval_min=float(self.config.get("eye_rest_interval_minutes", 20.0)),
         )
 

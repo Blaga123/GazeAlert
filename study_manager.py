@@ -118,10 +118,13 @@ class StudyManager:
         pomodoro_focus_min: float = 25.0,
         pomodoro_break_min: float = 5.0,
         eye_rest_interval_min: float = 20.0,
+        **kwargs
     ):
-        self.focus_duration_sec = pomodoro_focus_min * 60.0
-        self.break_duration_sec = pomodoro_break_min * 60.0
-        self.eye_rest_interval_sec = eye_rest_interval_min * 60.0
+        focus_m = kwargs.get("focus_duration_min", pomodoro_focus_min)
+        break_m = kwargs.get("break_duration_min", pomodoro_break_min)
+        self.focus_duration_sec = float(focus_m) * 60.0
+        self.break_duration_sec = float(break_m) * 60.0
+        self.eye_rest_interval_sec = float(eye_rest_interval_min) * 60.0
 
         # State
         self.is_pomodoro_active = True
